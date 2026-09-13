@@ -19,60 +19,54 @@ class CalendarSyncWorker(
 
     override suspend fun doWork(): Result {
         val repo = SettingsRepository(appContext)
-        val fromId = repo.fromCalendarIdFlow.first()
-        val toId = repo.toCalendarIdFlow.first()
+        val allPairs = repo.syncPairsFlow.first()
+        val enabledPairs = allPairs.filter { it.isEnabled }
 
-        if (fromId == null || toId == null || fromId == toId) {
-            return Result.failure()
+        if (enabledPairs.isEmpty()) {
+            return Result.success()
         }
 
-        // Validate that both source and target calendars exist on the device
-        val fromExists = CalendarSyncEngine.calendarExists(appContext, fromId)
-        val toExists = CalendarSyncEngine.calendarExists(appContext, toId)
+        val validPairs = mutableListOf<SyncPair>()
+        for (pair in enabledPairs) {
+            val fromExists = CalendarSyncEngine.calendarExists(appContext, pair.fromCalendarId)
+            val toExists = CalendarSyncEngine.calendarExists(appContext, pair.toCalendarId)
 
-        if (!fromExists || !toExists) {
-            val missingDesc = when {
-                !fromExists && !toExists -> "Source and target calendars were"
-                !fromExists -> "Source calendar was"
-                else -> "Target calendar was"
+            if (!fromExists || !toExists) {
+                val missingDesc = when {
+                    !fromExists && !toExists -> "Source and target calendars for '${pair.fromCalendarName} → ${pair.toCalendarName}' were"
+                    !fromExists -> "Source calendar '${pair.fromCalendarName}' was"
+                    else -> "Target calendar '${pair.toCalendarName}' was"
+                }
+                repo.togglePairEnabled(pair.id, false)
+                val statusMsg = "Calendar Not Found: $missingDesc not found. Pair disabled."
+                repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), statusMsg)
+                showCalendarNotFoundNotification(
+                    context = appContext,
+                    message = "$missingDesc not found on device. Sync pair has been disabled."
+                )
+            } else {
+                validPairs.add(pair)
             }
-
-            // Set sync frequency to Never and cancel background work
-            repo.saveSyncInterval(0)
-            CalendarSyncScheduler.cancelSync(appContext)
-
-            val statusMsg = "Calendar Not Found: $missingDesc not found. Scheduled sync set to Never."
-            repo.saveLastSync(System.currentTimeMillis(), statusMsg)
-
-            showCalendarNotFoundNotification(
-                context = appContext,
-                message = "$missingDesc not found on device. Background sync has been paused and set to Never."
-            )
-
-            return Result.failure()
         }
 
-        val daysPast = repo.syncDaysPastFlow.first()
-        val daysFuture = repo.syncDaysFutureFlow.first()
+        if (validPairs.isEmpty()) {
+            return Result.failure()
+        }
 
         return try {
-            val syncResult = CalendarSyncEngine.syncEventsToTarget(
-                context = appContext,
-                fromCalendarId = fromId,
-                toCalendarId = toId,
-                daysPast = daysPast,
-                daysFuture = daysFuture
-            )
+            val results = CalendarSyncEngine.syncAllPairs(appContext, validPairs)
+            val totalInserted = results.values.sumOf { it.insertedCount }
+            val totalUpdated = results.values.sumOf { it.updatedCount }
+            val totalDeleted = results.values.sumOf { it.deletedCount }
+
             val statusMsg = when {
-                syncResult.totalSourceEvents == 0 && syncResult.deletedCount == 0 -> "Auto-sync: source calendar is empty."
-                syncResult.totalSourceEvents == 0 && syncResult.deletedCount > 0 -> "Auto-sync: removed ${syncResult.deletedCount} clone event(s)."
-                syncResult.insertedCount == 0 && syncResult.updatedCount == 0 && syncResult.deletedCount == 0 -> "Auto-sync complete: 0 changes found."
+                totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${validPairs.size} pair(s)."
                 else -> {
                     val parts = mutableListOf<String>()
-                    if (syncResult.insertedCount > 0) parts.add("${syncResult.insertedCount} added")
-                    if (syncResult.updatedCount > 0) parts.add("${syncResult.updatedCount} updated")
-                    if (syncResult.deletedCount > 0) parts.add("${syncResult.deletedCount} removed")
-                    "Auto-synced: ${parts.joinToString(", ")}."
+                    if (totalInserted > 0) parts.add("$totalInserted added")
+                    if (totalUpdated > 0) parts.add("$totalUpdated updated")
+                    if (totalDeleted > 0) parts.add("$totalDeleted removed")
+                    "Auto-synced (${validPairs.size} pairs): ${parts.joinToString(", ")}."
                 }
             }
 

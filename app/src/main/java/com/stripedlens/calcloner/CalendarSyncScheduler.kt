@@ -9,6 +9,16 @@ import java.util.concurrent.TimeUnit
 
 object CalendarSyncScheduler {
     private const val WORK_NAME = "PeriodicCalendarSync"
+    const val REACTIVE_JOB_ID = 2001
+
+    fun scheduleReactiveSync(context: Context) {
+        CalendarSyncJobService.reschedule(context)
+    }
+
+    fun cancelReactiveSync(context: Context) {
+        val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as? android.app.job.JobScheduler ?: return
+        jobScheduler.cancel(REACTIVE_JOB_ID)
+    }
 
     fun scheduleSync(context: Context, intervalMinutes: Int) {
         if (intervalMinutes <= 0) {

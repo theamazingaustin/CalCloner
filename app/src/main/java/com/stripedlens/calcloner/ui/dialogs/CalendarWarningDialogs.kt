@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.stripedlens.calcloner.CalendarInfo
+import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.ui.components.SwipeToConfirmSlider
 import kotlinx.coroutines.delay
 
@@ -390,3 +391,85 @@ fun NukeCalendarEventsDialog(
         }
     }
 }
+
+/**
+ * Delete Sync Pair Dialog
+ * Prompts user whether to keep cloned events on the target calendar or wipe them.
+ */
+@Composable
+fun DeletePairDialog(
+    pair: SyncPair,
+    onDismiss: () -> Unit,
+    onDeleteKeepEvents: () -> Unit,
+    onDeleteAndClearEvents: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete Pair",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(28.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Delete Sync Pair?",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "You are deleting the sync pair between \"${pair.fromCalendarName}\" and \"${pair.toCalendarName}\".",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "What would you like to do with the events already cloned on \"${pair.toCalendarName}\"?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "• Keep Cloned Events: The sync stops, but cloned events remain on \"${pair.toCalendarName}\".",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "• Delete & Clear Events: Automatically purges all events created by this pair from \"${pair.toCalendarName}\".",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDeleteAndClearEvents,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete & Clear Events")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                FilledTonalButton(onClick = onDeleteKeepEvents) {
+                    Text("Keep Events")
+                }
+            }
+        }
+    )
+}
+

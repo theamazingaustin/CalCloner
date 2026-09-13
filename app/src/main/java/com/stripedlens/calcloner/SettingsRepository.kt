@@ -33,8 +33,43 @@ class SettingsRepository(private val context: Context) {
         val DISCLAIMER_VERSION_ACCEPTED = intPreferencesKey("disclaimer_version_accepted")
         val LAST_SYNC_TIME = longPreferencesKey("last_sync_time")
         val LAST_SYNC_STATUS = stringPreferencesKey("last_sync_status")
+        val SYNC_PAIRS_JSON = stringPreferencesKey("sync_pairs_json")
 
         const val CURRENT_DISCLAIMER_VERSION = 1
+    }
+
+    val syncPairsFlow: Flow<List<SyncPair>> = context.dataStore.data.map { prefs ->
+        val json = prefs[SYNC_PAIRS_JSON]
+        if (json != null) {
+            SyncPair.listFromJsonString(json)
+        } else {
+            // Check for legacy single-pair configuration and migrate
+            val legacyFromId = prefs[FROM_CALENDAR_ID]
+            val legacyFromName = prefs[FROM_CALENDAR_NAME] ?: "Source Calendar"
+            val legacyToId = prefs[TO_CALENDAR_ID]
+            val legacyToName = prefs[TO_CALENDAR_NAME] ?: "Clone Calendar"
+            if (legacyFromId != null && legacyToId != null) {
+                val legacyPast = prefs[SYNC_DAYS_PAST]
+                val legacyFuture = prefs[SYNC_DAYS_FUTURE]
+                val legacyTime = prefs[LAST_SYNC_TIME]
+                val legacyStatus = prefs[LAST_SYNC_STATUS]
+                listOf(
+                    SyncPair(
+                        fromCalendarId = legacyFromId,
+                        fromCalendarName = legacyFromName,
+                        toCalendarId = legacyToId,
+                        toCalendarName = legacyToName,
+                        daysPast = if (legacyPast == 30) null else legacyPast,
+                        daysFuture = if (legacyFuture == 30) null else legacyFuture,
+                        isEnabled = true,
+                        lastSyncTime = legacyTime,
+                        lastSyncStatus = legacyStatus
+                    )
+                )
+            } else {
+                emptyList()
+            }
+        }
     }
 
     val fromCalendarIdFlow: Flow<Long?> = context.dataStore.data.map { it[FROM_CALENDAR_ID] }
@@ -110,6 +145,58 @@ class SettingsRepository(private val context: Context) {
                 preferences[LAST_SYNC_STATUS] = status
             } else {
                 preferences.remove(LAST_SYNC_STATUS)
+            }
+        }
+    }
+
+    suspend fun saveSyncPairs(pairs: List<SyncPair>) {
+        context.dataStore.edit { preferences ->
+            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(pairs)
+        }
+    }
+
+    suspend fun upsertSyncPair(pair: SyncPair) {
+        context.dataStore.edit { preferences ->
+            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+            val index = currentPairs.indexOfFirst { it.id == pair.id }
+            if (index >= 0) {
+                currentPairs[index] = pair
+            } else {
+                currentPairs.add(pair)
+            }
+            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+        }
+    }
+
+    suspend fun deleteSyncPair(pairId: String) {
+        context.dataStore.edit { preferences ->
+            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+            currentPairs.removeAll { it.id == pairId }
+            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+        }
+    }
+
+    suspend fun togglePairEnabled(pairId: String, isEnabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+            val index = currentPairs.indexOfFirst { it.id == pairId }
+            if (index >= 0) {
+                currentPairs[index] = currentPairs[index].copy(isEnabled = isEnabled)
+                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+            }
+        }
+    }
+
+    suspend fun updatePairSyncStatus(pairId: String, timestamp: Long, status: String) {
+        context.dataStore.edit { preferences ->
+            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+            val index = currentPairs.indexOfFirst { it.id == pairId }
+            if (index >= 0) {
+                currentPairs[index] = currentPairs[index].copy(
+                    lastSyncTime = timestamp,
+                    lastSyncStatus = status
+                )
+                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
             }
         }
     }

@@ -63,4 +63,7 @@ dependencies {
 
     // Datastore preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
 }

@@ -18,9 +18,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,22 +29,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.stripedlens.calcloner.ui.components.CalendarDropdown
+import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
+import com.stripedlens.calcloner.ui.components.SyncPairCard
 import com.stripedlens.calcloner.ui.dialogs.ClearCloneEventsDialog
+import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DisclaimerConsentDialog
 import com.stripedlens.calcloner.ui.dialogs.NukeCalendarEventsDialog
 import com.stripedlens.calcloner.ui.dialogs.TargetCalendarWarningDialog
@@ -127,20 +124,22 @@ fun CalendarSyncApp(
     }
 
     var availableCalendars by remember { mutableStateOf<List<CalendarInfo>>(emptyList()) }
-    val savedFromId by repo.fromCalendarIdFlow.collectAsState(initial = null)
-    val savedToId by repo.toCalendarIdFlow.collectAsState(initial = null)
+    val syncPairs by repo.syncPairsFlow.collectAsState(initial = emptyList())
     val savedInterval by repo.syncIntervalFlow.collectAsState(initial = 60)
-    val customDaysPast by repo.customDaysPastFlow.collectAsState(initial = null)
-    val customDaysFuture by repo.customDaysFutureFlow.collectAsState(initial = null)
-    val lastSyncTime by repo.lastSyncTimeFlow.collectAsState(initial = null)
-    val lastSyncStatus by repo.lastSyncStatusFlow.collectAsState(initial = null)
     val isDisclaimerAccepted by repo.disclaimerAcceptedFlow.collectAsState(initial = true)
 
-    // Automatically ensure background sync is enqueued whenever valid calendars are configured
-    LaunchedEffect(savedFromId, savedToId, savedInterval) {
-        if (savedFromId != null && savedToId != null && savedFromId != savedToId && savedInterval > 0) {
-            CalendarSyncScheduler.scheduleSync(context, savedInterval)
-        } else if (savedInterval <= 0) {
+    // Automatically manage reactive and periodic background sync
+    LaunchedEffect(syncPairs, savedInterval) {
+        val enabledPairs = syncPairs.filter { it.isEnabled }
+        if (enabledPairs.isNotEmpty()) {
+            CalendarSyncScheduler.scheduleReactiveSync(context)
+            if (savedInterval > 0) {
+                CalendarSyncScheduler.scheduleSync(context, savedInterval)
+            } else {
+                CalendarSyncScheduler.cancelSync(context)
+            }
+        } else {
+            CalendarSyncScheduler.cancelReactiveSync(context)
             CalendarSyncScheduler.cancelSync(context)
         }
     }
@@ -162,24 +161,24 @@ fun CalendarSyncApp(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Modal & Sheet state
+    var showAddEditSheet by remember { mutableStateOf(false) }
+    var pairToEdit by remember { mutableStateOf<SyncPair?>(null) }
+    var pairToDelete by remember { mutableStateOf<SyncPair?>(null) }
+    var pairToClear by remember { mutableStateOf<SyncPair?>(null) }
+    var pairToNuke by remember { mutableStateOf<SyncPair?>(null) }
+    var clearTargetEventCount by remember { mutableIntStateOf(0) }
+
     // Operation & Progress state
     var isOperating by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
+    var isSyncingAll by remember { mutableStateOf(false) }
+    var syncingPairId by remember { mutableStateOf<String?>(null) }
     var isClearing by remember { mutableStateOf(false) }
     var isNuking by remember { mutableStateOf(false) }
     var operationDone by remember { mutableStateOf(false) }
     var progressFraction by remember { mutableFloatStateOf(0f) }
     var progressStatusText by remember { mutableStateOf("") }
-
-    // Warning Popups state
-    var pendingTargetCalendar by remember { mutableStateOf<CalendarInfo?>(null) }
-    var showTargetWarningDialog by remember { mutableStateOf(false) }
-    var targetCalendarEventCount by remember { mutableIntStateOf(0) }
-
-    var showClearConfirmDialog by remember { mutableStateOf(false) }
-    var clearTargetEventCount by remember { mutableIntStateOf(0) }
-
-    var showNukeConfirmDialog by remember { mutableStateOf(false) }
 
     fun refreshCalendars() {
         if (hasPermissions) {
@@ -193,32 +192,16 @@ fun CalendarSyncApp(
         }
     }
 
-    val selectedFromCalendar = availableCalendars.find { it.id == savedFromId }
-    val selectedToCalendar = availableCalendars.find { it.id == savedToId }
-
-    val isSyncEnabled = hasPermissions &&
-                        !isOperating &&
-                        selectedFromCalendar != null &&
-                        selectedToCalendar != null &&
-                        selectedToCalendar.canWrite &&
-                        selectedFromCalendar.id != selectedToCalendar.id
-
-    val isClearEnabled = hasPermissions &&
-                         !isOperating &&
-                         selectedToCalendar != null &&
-                         selectedToCalendar.canWrite &&
-                         (selectedFromCalendar == null || selectedToCalendar.id != selectedFromCalendar.id)
-
     // Motion Animation Transition Specs
-    val infiniteTransition = rememberInfiniteTransition(label = "syncSpinTransition")
-    val fabSpinAngle by infiniteTransition.animateFloat(
+    val infiniteTransition = rememberInfiniteTransition(label = "topBarSpinTransition")
+    val topBarSpinAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 900, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "fabSpinAngle"
+        label = "topBarSpinAngle"
     )
 
     val animatedProgress by animateFloatAsState(
@@ -226,6 +209,108 @@ fun CalendarSyncApp(
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "animatedProgress"
     )
+
+    // Sync All Orchestrator
+    fun syncAll() {
+        val enabledPairs = syncPairs.filter { it.isEnabled }
+        if (enabledPairs.isEmpty() || isOperating) return
+
+        isOperating = true
+        isSyncing = true
+        isSyncingAll = true
+        operationDone = false
+        progressFraction = 0f
+        progressStatusText = "Starting sync for ${enabledPairs.size} pair(s)..."
+
+        scope.launch {
+            try {
+                val results = withContext(Dispatchers.IO) {
+                    CalendarSyncEngine.syncAllPairs(
+                        context = context,
+                        pairs = enabledPairs,
+                        onPairProgress = { pair, idx, total, _, msg ->
+                            scope.launch(Dispatchers.Main) {
+                                progressFraction = idx.toFloat() / total.toFloat()
+                                progressStatusText = "[$idx/$total] ${pair.fromCalendarName} → ${pair.toCalendarName}: ${msg ?: ""}"
+                            }
+                        }
+                    )
+                }
+                val totalInserted = results.values.sumOf { it.insertedCount }
+                val totalUpdated = results.values.sumOf { it.updatedCount }
+                val totalDeleted = results.values.sumOf { it.deletedCount }
+
+                val summary = if (totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0) {
+                    "Sync complete: 0 changes across ${enabledPairs.size} pair(s)."
+                } else {
+                    val parts = mutableListOf<String>()
+                    if (totalInserted > 0) parts.add("$totalInserted added")
+                    if (totalUpdated > 0) parts.add("$totalUpdated updated")
+                    if (totalDeleted > 0) parts.add("$totalDeleted removed")
+                    "Sync complete (${enabledPairs.size} pairs): ${parts.joinToString(", ")}."
+                }
+                repo.saveLastSync(System.currentTimeMillis(), summary)
+                progressFraction = 1f
+                operationDone = true
+                progressStatusText = summary
+            } catch (e: Exception) {
+                progressStatusText = "Sync failed: ${e.message}"
+            } finally {
+                isOperating = false
+                isSyncing = false
+                isSyncingAll = false
+            }
+        }
+    }
+
+    // Sync Single Pair Orchestrator
+    fun syncSinglePair(pair: SyncPair) {
+        if (isOperating) return
+        isOperating = true
+        isSyncing = true
+        syncingPairId = pair.id
+        operationDone = false
+        progressFraction = 0f
+        progressStatusText = "Syncing '${pair.fromCalendarName} → ${pair.toCalendarName}'..."
+
+        scope.launch {
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    CalendarSyncEngine.syncEventsToTarget(
+                        context = context,
+                        fromCalendarId = pair.fromCalendarId,
+                        toCalendarId = pair.toCalendarId,
+                        daysPast = pair.daysPast ?: 30,
+                        daysFuture = pair.daysFuture ?: 30,
+                        pairId = pair.id,
+                        onProgress = { cur, tot, msg ->
+                            scope.launch(Dispatchers.Main) {
+                                progressFraction = if (tot > 0) cur.toFloat() / tot else 0f
+                                progressStatusText = msg
+                            }
+                        }
+                    )
+                }
+                val parts = mutableListOf<String>()
+                if (res.insertedCount > 0) parts.add("${res.insertedCount} added")
+                if (res.updatedCount > 0) parts.add("${res.updatedCount} updated")
+                if (res.deletedCount > 0) parts.add("${res.deletedCount} removed")
+                val statusMsg = if (parts.isEmpty()) "Sync complete: 0 changes." else "Sync complete: ${parts.joinToString(", ")}."
+                repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), statusMsg)
+                progressFraction = 1f
+                operationDone = true
+                progressStatusText = "${pair.fromCalendarName} → ${pair.toCalendarName}: $statusMsg"
+            } catch (e: Exception) {
+                val errorMsg = "Sync failed: ${e.message}"
+                repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), errorMsg)
+                progressStatusText = errorMsg
+            } finally {
+                isOperating = false
+                isSyncing = false
+                syncingPairId = null
+            }
+        }
+    }
 
     // First-Run Consent / Disclaimer Popup
     if (!isDisclaimerAccepted) {
@@ -236,117 +321,151 @@ fun CalendarSyncApp(
         )
     }
 
-    // Target Calendar Warning Dialog with 5s countdown + Swipe slider + Event Count
-    if (showTargetWarningDialog && pendingTargetCalendar != null) {
-        TargetCalendarWarningDialog(
-            calendar = pendingTargetCalendar!!,
-            eventCount = targetCalendarEventCount,
+    // Add / Edit Sync Pair Modal Bottom Sheet
+    if (showAddEditSheet) {
+        AddEditSyncPairSheet(
+            pairToEdit = pairToEdit,
+            existingPairs = syncPairs,
+            availableCalendars = availableCalendars,
             onDismiss = {
-                showTargetWarningDialog = false
-                pendingTargetCalendar = null
+                showAddEditSheet = false
+                pairToEdit = null
             },
-            onConfirmSelection = {
-                val cal = pendingTargetCalendar
-                showTargetWarningDialog = false
-                pendingTargetCalendar = null
-                if (cal != null) {
-                    scope.launch {
-                        repo.saveToCalendar(cal.id, cal.displayName)
-                    }
+            onSavePair = { pair ->
+                showAddEditSheet = false
+                pairToEdit = null
+                scope.launch {
+                    repo.upsertSyncPair(pair)
+                    progressStatusText = "Saved sync pair '${pair.fromCalendarName} → ${pair.toCalendarName}'."
+                    operationDone = true
                 }
             }
         )
     }
 
-    // Delete (Clear) Clone Calendar Events Dialog with 5s countdown + Swipe slider + Event Count
-    if (showClearConfirmDialog && selectedToCalendar != null) {
-        ClearCloneEventsDialog(
-            calendar = selectedToCalendar,
-            eventCount = clearTargetEventCount,
-            onDismiss = {
-                if (!isOperating) showClearConfirmDialog = false
-            },
-            onConfirmDelete = {
-                showClearConfirmDialog = false
-                isOperating = true
-                isClearing = true
-                isSyncing = false
-                operationDone = false
-                progressFraction = 0f
-                progressStatusText = "Connecting to clone calendar..."
-
+    // Delete Pair Dialog (Wingman Option A: Prompt to keep vs delete cloned events)
+    if (pairToDelete != null) {
+        val pair = pairToDelete!!
+        DeletePairDialog(
+            pair = pair,
+            onDismiss = { pairToDelete = null },
+            onDeleteKeepEvents = {
                 scope.launch {
-                    try {
-                        val deleted = withContext(Dispatchers.IO) {
-                            CalendarSyncEngine.clearTargetCalendarEvents(
-                                context = context,
-                                toCalendarId = selectedToCalendar.id,
-                                fromCalendarId = selectedFromCalendar?.id,
-                                onProgress = { msg ->
-                                    scope.launch(Dispatchers.Main) {
-                                        progressStatusText = msg
-                                    }
-                                }
-                            )
-                        }
-                        progressStatusText = if (deleted > 0) {
-                            "Cleared $deleted event(s) from clone calendar \"${selectedToCalendar.displayName}\"."
-                        } else {
-                            "Clone calendar \"${selectedToCalendar.displayName}\" is already empty (0 events)."
-                        }
-                        operationDone = true
-                    } catch (e: Exception) {
-                        progressStatusText = "Clear failed: ${e.message}"
-                    } finally {
-                        isOperating = false
-                        isClearing = false
-                    }
+                    repo.deleteSyncPair(pair.id)
+                    pairToDelete = null
+                    progressStatusText = "Deleted sync pair '${pair.fromCalendarName} → ${pair.toCalendarName}'. Existing cloned events kept on target."
+                    operationDone = true
                 }
-            }
-        )
-    }
-
-    // Nuke Calendar Events Dialog with 5s countdown + Swipe slider
-    if (showNukeConfirmDialog && selectedToCalendar != null) {
-        NukeCalendarEventsDialog(
-            calendar = selectedToCalendar,
-            onDismiss = {
-                if (!isOperating) showNukeConfirmDialog = false
             },
-            onConfirmNuke = {
-                showNukeConfirmDialog = false
-                isOperating = true
-                isNuking = true
-                isClearing = false
-                isSyncing = false
-                operationDone = false
-                progressFraction = 0f
-                progressStatusText = "Step 1/3: Forcing Google Cloud download..."
-
+            onDeleteAndClearEvents = {
                 scope.launch {
+                    isOperating = true
+                    isClearing = true
+                    progressStatusText = "Deleting pair and clearing cloned events from '${pair.toCalendarName}'..."
                     try {
                         withContext(Dispatchers.IO) {
-                            CalendarSyncEngine.nukeTargetCalendarEvents(
+                            CalendarSyncEngine.clearTargetCalendarEvents(
                                 context = context,
-                                toCalendarId = selectedToCalendar.id,
-                                fromCalendarId = selectedFromCalendar?.id
-                            ) { msg ->
-                                scope.launch(Dispatchers.Main) {
-                                    progressStatusText = msg
-                                }
-                            }
+                                toCalendarId = pair.toCalendarId,
+                                fromCalendarId = pair.fromCalendarId,
+                                pairId = pair.id
+                            )
                         }
-                        operationDone = true
-                    } catch (e: Exception) {
-                        progressStatusText = "Nuke failed: ${e.message}"
-                    } finally {
-                        isOperating = false
-                        isNuking = false
-                        refreshCalendars()
-                    }
+                    } catch (_: Exception) {}
+                    repo.deleteSyncPair(pair.id)
+                    isOperating = false
+                    isClearing = false
+                    pairToDelete = null
+                    progressStatusText = "Deleted sync pair and cleared all its cloned events from '${pair.toCalendarName}'."
+                    operationDone = true
                 }
             }
         )
+    }
+
+    // Clear Cloned Events (This Pair Only) Dialog
+    if (pairToClear != null) {
+        val pair = pairToClear!!
+        val targetCal = availableCalendars.find { it.id == pair.toCalendarId }
+        if (targetCal != null) {
+            ClearCloneEventsDialog(
+                calendar = targetCal,
+                eventCount = clearTargetEventCount,
+                onDismiss = { if (!isOperating) pairToClear = null },
+                onConfirmDelete = {
+                    pairToClear = null
+                    isOperating = true
+                    isClearing = true
+                    operationDone = false
+                    progressFraction = 0f
+                    progressStatusText = "Clearing cloned events for '${pair.fromCalendarName} → ${pair.toCalendarName}'..."
+
+                    scope.launch {
+                        try {
+                            val deleted = withContext(Dispatchers.IO) {
+                                CalendarSyncEngine.clearTargetCalendarEvents(
+                                    context = context,
+                                    toCalendarId = pair.toCalendarId,
+                                    fromCalendarId = pair.fromCalendarId,
+                                    pairId = pair.id,
+                                    onProgress = { msg -> scope.launch(Dispatchers.Main) { progressStatusText = msg } }
+                                )
+                            }
+                            progressStatusText = if (deleted > 0) {
+                                "Cleared $deleted cloned event(s) from '${pair.toCalendarName}'."
+                            } else {
+                                "Target calendar '${pair.toCalendarName}' has 0 cloned events for this pair."
+                            }
+                            operationDone = true
+                        } catch (e: Exception) {
+                            progressStatusText = "Clear failed: ${e.message}"
+                        } finally {
+                            isOperating = false
+                            isClearing = false
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    // Nuke Calendar Events Dialog
+    if (pairToNuke != null) {
+        val pair = pairToNuke!!
+        val targetCal = availableCalendars.find { it.id == pair.toCalendarId }
+        if (targetCal != null) {
+            NukeCalendarEventsDialog(
+                calendar = targetCal,
+                onDismiss = { if (!isOperating) pairToNuke = null },
+                onConfirmNuke = {
+                    pairToNuke = null
+                    isOperating = true
+                    isNuking = true
+                    operationDone = false
+                    progressFraction = 0f
+                    progressStatusText = "Step 1/3: Forcing Google Cloud download..."
+
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                CalendarSyncEngine.nukeTargetCalendarEvents(
+                                    context = context,
+                                    toCalendarId = pair.toCalendarId,
+                                    fromCalendarId = pair.fromCalendarId
+                                ) { msg -> scope.launch(Dispatchers.Main) { progressStatusText = msg } }
+                            }
+                            operationDone = true
+                        } catch (e: Exception) {
+                            progressStatusText = "Nuke failed: ${e.message}"
+                        } finally {
+                            isOperating = false
+                            isNuking = false
+                            refreshCalendars()
+                        }
+                    }
+                }
+            )
+        }
     }
 
     Scaffold(
@@ -368,36 +487,49 @@ fun CalendarSyncApp(
                     }
                 },
                 actions = {
-                    // Theme Switcher Button with Crossfade Animation
+                    // Sync All Button in Top Bar
+                    val hasEnabledPairs = syncPairs.any { it.isEnabled }
                     FilledTonalButton(
-                        onClick = {
-                            scope.launch { onCycleTheme() }
-                        },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        onClick = { syncAll() },
+                        enabled = hasEnabledPairs && !isOperating,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Sync All",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .rotate(if (isSyncingAll) topBarSpinAngle else 0f)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isSyncingAll) "Syncing..." else "Sync All",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // Theme Switcher Button with Crossfade Animation
+                    IconButton(
+                        onClick = { scope.launch { onCycleTheme() } }
                     ) {
                         Crossfade(
                             targetState = themeMode,
                             animationSpec = tween(durationMillis = 200),
                             label = "themeCrossfade"
                         ) { mode ->
-                            val (iconRes: Int, label: String) = when (mode) {
-                                ThemeMode.AUTO -> Pair(R.drawable.ic_theme_auto, "Auto")
-                                ThemeMode.DARK -> Pair(R.drawable.ic_theme_dark, "Dark")
-                                ThemeMode.LIGHT -> Pair(R.drawable.ic_theme_light, "Light")
+                            val iconRes = when (mode) {
+                                ThemeMode.AUTO -> R.drawable.ic_theme_auto
+                                ThemeMode.DARK -> R.drawable.ic_theme_dark
+                                ThemeMode.LIGHT -> R.drawable.ic_theme_light
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painter = painterResource(id = iconRes),
-                                    contentDescription = "Theme: $label",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = "Theme",
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 },
@@ -409,79 +541,23 @@ fun CalendarSyncApp(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
-                    if (!isSyncEnabled) return@ExtendedFloatingActionButton
-                    val fromCal = selectedFromCalendar ?: return@ExtendedFloatingActionButton
-                    val toCal = selectedToCalendar ?: return@ExtendedFloatingActionButton
-
-                    isOperating = true
-                    isSyncing = true
-                    isClearing = false
-                    operationDone = false
-                    progressFraction = 0f
-                    progressStatusText = "Reading calendar events..."
-
-                    scope.launch {
-                        try {
-                            val daysPast = repo.syncDaysPastFlow.first()
-                            val daysFuture = repo.syncDaysFutureFlow.first()
-                            val result = withContext(Dispatchers.IO) {
-                                CalendarSyncEngine.syncEventsToTarget(
-                                    context = context,
-                                    fromCalendarId = fromCal.id,
-                                    toCalendarId = toCal.id,
-                                    daysPast = daysPast,
-                                    daysFuture = daysFuture,
-                                    onProgress = { current, total, msg ->
-                                        scope.launch(Dispatchers.Main) {
-                                            progressFraction = if (total > 0) current.toFloat() / total else 0f
-                                            progressStatusText = msg
-                                        }
-                                    }
-                                )
-                            }
-                            val statusMsg = when {
-                                result.totalSourceEvents == 0 && result.deletedCount == 0 -> "Source calendar is empty (0 events)."
-                                result.totalSourceEvents == 0 && result.deletedCount > 0 -> "Source calendar is empty. Removed ${result.deletedCount} clone event(s)."
-                                result.insertedCount == 0 && result.updatedCount == 0 && result.deletedCount == 0 -> "Sync complete: 0 changes found."
-                                else -> {
-                                    val parts = mutableListOf<String>()
-                                    if (result.insertedCount > 0) parts.add("${result.insertedCount} added")
-                                    if (result.updatedCount > 0) parts.add("${result.updatedCount} updated")
-                                    if (result.deletedCount > 0) parts.add("${result.deletedCount} removed")
-                                    "Sync complete: ${parts.joinToString(", ")}."
-                                }
-                            }
-
-                            progressFraction = 1f
-                            operationDone = true
-                            progressStatusText = statusMsg
-                            repo.saveLastSync(System.currentTimeMillis(), statusMsg)
-                        } catch (e: Exception) {
-                            progressStatusText = "Sync failed: ${e.message}"
-                            repo.saveLastSync(System.currentTimeMillis(), "Failed: ${e.message}")
-                        } finally {
-                            isOperating = false
-                            isSyncing = false
-                        }
-                    }
+                    pairToEdit = null
+                    showAddEditSheet = true
                 },
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Sync",
-                        modifier = Modifier
-                            .size(22.dp)
-                            .rotate(if (isSyncing) fabSpinAngle else 0f)
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Pair"
                     )
                 },
                 text = {
                     Text(
-                        text = if (isSyncing) "Syncing..." else "Sync Now",
+                        text = "Add Sync Pair",
                         fontWeight = FontWeight.Bold
                     )
                 },
-                containerColor = if (isSyncEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (isSyncEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         },
         floatingActionButtonPosition = FabPosition.End
@@ -529,23 +605,234 @@ fun CalendarSyncApp(
                 }
             }
 
-            // CARD 1: SYNC ROUTE (SOURCE -> TARGET)
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
+            // Live Telemetry & Progress Card
+            AnimatedVisibility(
+                visible = isOperating || operationDone || progressStatusText.isNotEmpty(),
+                enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+                exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
+            ) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = if (operationDone) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        else MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when {
+                                    isSyncing -> "Sync in Progress"
+                                    isNuking -> "Nuking Calendar"
+                                    isClearing -> "Clearing Events"
+                                    operationDone -> "Operation Completed"
+                                    else -> "Status"
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (operationDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+
+                            if (isSyncing && progressFraction > 0f) {
+                                Text(
+                                    text = "${(animatedProgress * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        if (isSyncing && progressFraction > 0f) {
+                            LinearProgressIndicator(
+                                progress = animatedProgress.coerceIn(0f, 1f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+
+                        Text(
+                            text = progressStatusText,
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    ),
+
+                        if (operationDone && (progressStatusText.contains("Cleared") || progressStatusText.contains("purging") ||
+                            progressStatusText.contains("Force") || progressStatusText.contains("wiped") ||
+                            progressStatusText.contains("Pushed deletions"))) {
+                            FilledTonalButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { SystemUtils.openNotificationShade(context) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open Notification Shade (Confirm Cloud Deletes)", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SECTION 1: CONFIGURED SYNC PAIRS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Sync Pairs",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = "${syncPairs.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            // Empty State Card
+            if (syncPairs.isEmpty()) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "No Calendar Pairs Yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "Add your first pair to begin safe, one-way calendar replication with zero battery drain.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+
+                        Button(
+                            onClick = {
+                                pairToEdit = null
+                                showAddEditSheet = true
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Add First Sync Pair")
+                        }
+                    }
+                }
+            } else {
+                // List of Sync Pair Cards
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    syncPairs.forEach { pair ->
+                        val fromCal = availableCalendars.find { it.id == pair.fromCalendarId }
+                        val toCal = availableCalendars.find { it.id == pair.toCalendarId }
+                        val isPairSyncing = isSyncing && (isSyncingAll || syncingPairId == pair.id)
+
+                        SyncPairCard(
+                            pair = pair,
+                            fromCalendar = fromCal,
+                            toCalendar = toCal,
+                            isSyncing = isPairSyncing,
+                            onSyncNow = { syncSinglePair(pair) },
+                            onEdit = {
+                                pairToEdit = pair
+                                showAddEditSheet = true
+                            },
+                            onToggleEnabled = { enabled ->
+                                scope.launch {
+                                    repo.togglePairEnabled(pair.id, enabled)
+                                }
+                            },
+                            onClearPairEvents = {
+                                scope.launch {
+                                    clearTargetEventCount = withContext(Dispatchers.IO) {
+                                        CalendarSyncEngine.getCalendarEventCount(context, pair.toCalendarId)
+                                    }
+                                    pairToClear = pair
+                                }
+                            },
+                            onNukeTarget = {
+                                pairToNuke = pair
+                            },
+                            onDeletePair = {
+                                pairToDelete = pair
+                            }
+                        )
+                    }
+                }
+            }
+
+            // SECTION 2: AUTOMATIC & REACTIVE SYNC SETTINGS
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -557,25 +844,24 @@ fun CalendarSyncApp(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Safe",
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Sync Route",
+                                text = "Sync Engine & Battery",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
-                        // Safeguard Pill Badge
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                         ) {
                             Text(
-                                text = "Source Protected",
+                                text = "Zero-Drain",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -584,365 +870,117 @@ fun CalendarSyncApp(
                         }
                     }
 
-                    Text(
-                        text = "Source calendar is strictly read-only. Events are cloned one-way into target.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Divider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // Source Calendar Dropdown
-                    CalendarDropdown(
-                        label = "SOURCE Calendar (Read Only)",
-                        calendars = availableCalendars,
-                        selectedCalendar = selectedFromCalendar,
-                        onCalendarSelected = { cal ->
-                            scope.launch {
-                                repo.saveFromCalendar(cal?.id, cal?.displayName)
-                            }
-                        }
-                    )
-
-                    AnimatedVisibility(
-                        visible = selectedFromCalendar == null,
-                        enter = fadeIn(tween(150)) + expandVertically(tween(200)),
-                        exit = fadeOut(tween(100)) + shrinkVertically(tween(150))
+                    // Reactive Sync Status Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        val isMissing = savedFromId != null
-                        Text(
-                            text = if (isMissing) "Calendar Not Found: Saved source calendar was not found on this device."
-                                   else "Please select a source calendar to clone events from.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isMissing) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-
-                    // Directional Indicator: Source -> Target Flow
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Flow Down",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Reactive Sync: Active",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
-                                    text = "clones one-way into",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium
+                                    text = "Event-driven Content URI triggers sync changes within ~5s without polling battery drain.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
                     }
 
-                    // Target (Clone) Calendar Dropdown
-                    CalendarDropdown(
-                        label = "TARGET (Clone) Calendar",
-                        calendars = availableCalendars,
-                        selectedCalendar = selectedToCalendar,
-                        filterWritable = true,
-                        onCalendarSelected = { cal ->
-                            if (cal == null) {
-                                scope.launch { repo.saveToCalendar(null, null) }
-                            } else {
-                                scope.launch {
-                                    targetCalendarEventCount = withContext(Dispatchers.IO) {
-                                        CalendarSyncEngine.getCalendarEventCount(context, cal.id)
-                                    }
-                                    pendingTargetCalendar = cal
-                                    showTargetWarningDialog = true
-                                }
-                            }
-                        }
+                    // Scheduled Background Fallback Selector
+                    var showIntervalMenu by remember { mutableStateOf(false) }
+                    val intervalOptions = listOf(
+                        0 to "Disabled (Reactive Only)",
+                        15 to "Every 15 minutes",
+                        30 to "Every 30 minutes",
+                        60 to "Every 1 hour (Default)",
+                        180 to "Every 3 hours",
+                        360 to "Every 6 hours",
+                        720 to "Every 12 hours",
+                        1440 to "Every 24 hours"
                     )
 
-                    AnimatedVisibility(
-                        visible = selectedToCalendar == null || !selectedToCalendar.canWrite || (selectedFromCalendar != null && selectedFromCalendar.id == selectedToCalendar.id),
-                        enter = fadeIn(tween(150)) + expandVertically(tween(200)),
-                        exit = fadeOut(tween(100)) + shrinkVertically(tween(150))
-                    ) {
-                        val errorText = when {
-                            selectedToCalendar == null -> {
-                                if (savedToId != null) "Calendar Not Found: Saved target calendar was deleted or not found."
-                                else "Please select a target clone calendar to enable sync."
-                            }
-                            !selectedToCalendar.canWrite -> "Selected target calendar is read-only. Select a writable calendar."
-                            selectedFromCalendar != null && selectedFromCalendar.id == selectedToCalendar.id -> "Source and Target cannot be the same calendar!"
-                            else -> ""
-                        }
-                        Text(
-                            text = errorText,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
+                    val currentIntervalLabel = intervalOptions.find { it.first == savedInterval }?.second ?: "Every $savedInterval minutes"
 
-            // CARD 2: SYNC SCHEDULE & DATE WINDOW
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Schedule & Date Window",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    // Interval selector
-                    val intervalOptions = listOf(0, 15, 30, 60, 120, 360, 1440)
-                    var intervalExpanded by remember { mutableStateOf(false) }
-
-                    ExposedDropdownMenuBox(
-                        expanded = intervalExpanded,
-                        onExpandedChange = { if (!isOperating) intervalExpanded = !intervalExpanded }
-                    ) {
-                        OutlinedTextField(
-                            value = DateTimeUtils.formatInterval(savedInterval),
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Background Sync Interval") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = intervalExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = intervalExpanded,
-                            onDismissRequest = { intervalExpanded = false }
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedCard(
+                            onClick = { showIntervalMenu = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
-                            intervalOptions.forEach { interval ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Periodic Safety-Net Sync",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = currentIntervalLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Select"
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showIntervalMenu,
+                            onDismissRequest = { showIntervalMenu = false }
+                        ) {
+                            intervalOptions.forEach { (mins, label) ->
                                 DropdownMenuItem(
-                                    text = { Text(DateTimeUtils.formatInterval(interval)) },
+                                    text = {
+                                        Text(
+                                            text = label,
+                                            fontWeight = if (mins == savedInterval) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
                                     onClick = {
-                                        intervalExpanded = false
-                                        scope.launch {
-                                            repo.saveSyncInterval(interval)
-                                            CalendarSyncScheduler.scheduleSync(context, interval)
-                                        }
+                                        showIntervalMenu = false
+                                        scope.launch { repo.saveSyncInterval(mins) }
                                     }
                                 )
                             }
                         }
                     }
 
-                    // Sync Window Range (Days Back / Days Forward)
-                    val focusManager = LocalFocusManager.current
-                    var isPastFocused by remember { mutableStateOf(false) }
-                    var hadPastFocus by remember { mutableStateOf(false) }
-                    var pastInputText by remember { mutableStateOf("") }
-
-                    var isFutureFocused by remember { mutableStateOf(false) }
-                    var hadFutureFocus by remember { mutableStateOf(false) }
-                    var futureInputText by remember { mutableStateOf("") }
-
-                    LaunchedEffect(customDaysPast) {
-                        if (!isPastFocused) {
-                            pastInputText = if (customDaysPast != null && customDaysPast != 30) customDaysPast.toString() else ""
-                        }
-                    }
-
-                    LaunchedEffect(customDaysFuture) {
-                        if (!isFutureFocused) {
-                            futureInputText = if (customDaysFuture != null && customDaysFuture != 30) customDaysFuture.toString() else ""
-                        }
-                    }
-
-                    val isPastDefault = when {
-                        isPastFocused -> pastInputText.isEmpty() || pastInputText == "30"
-                        else -> customDaysPast == null || customDaysPast == 30
-                    }
-
-                    val pastDisplayValue = when {
-                        isPastFocused -> pastInputText
-                        isPastDefault -> "30"
-                        else -> if (pastInputText.isNotEmpty()) pastInputText else (customDaysPast?.toString() ?: "30")
-                    }
-
-                    val isFutureDefault = when {
-                        isFutureFocused -> futureInputText.isEmpty() || futureInputText == "30"
-                        else -> customDaysFuture == null || customDaysFuture == 30
-                    }
-
-                    val futureDisplayValue = when {
-                        isFutureFocused -> futureInputText
-                        isFutureDefault -> "30"
-                        else -> if (futureInputText.isNotEmpty()) futureInputText else (customDaysFuture?.toString() ?: "30")
-                    }
-
-                    val defaultTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    val normalTextColor = MaterialTheme.colorScheme.onSurface
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Days Back
-                        OutlinedTextField(
-                            value = pastDisplayValue,
-                            onValueChange = { input ->
-                                val filtered = input.filter { it.isDigit() }.take(3)
-                                pastInputText = filtered
-                                val num = filtered.toIntOrNull()
-                                if (num != null && num in 1..999) {
-                                    if (num == 30) {
-                                        scope.launch { repo.saveSyncDaysPast(null) }
-                                    } else {
-                                        scope.launch { repo.saveSyncDaysPast(num) }
-                                    }
-                                } else if (filtered.isEmpty()) {
-                                    scope.launch { repo.saveSyncDaysPast(null) }
-                                }
-                            },
-                            label = { Text("Days Back") },
-                            supportingText = {
-                                Text(if (isPastDefault) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
-                            },
-                            singleLine = true,
-                            enabled = !isOperating,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = if (isPastDefault) defaultTextColor else normalTextColor,
-                                unfocusedTextColor = if (isPastDefault) defaultTextColor else normalTextColor
-                            ),
-                            textStyle = LocalTextStyle.current.copy(
-                                color = if (isPastDefault) defaultTextColor else normalTextColor
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = {
-                                    focusManager.moveFocus(FocusDirection.Next)
-                                }
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .onFocusChanged { focusState ->
-                                    val previouslyFocused = hadPastFocus
-                                    hadPastFocus = focusState.isFocused
-                                    isPastFocused = focusState.isFocused
-                                    if (previouslyFocused && !focusState.isFocused) {
-                                        val num = pastInputText.toIntOrNull()
-                                        if (num == null || num <= 0 || num == 30) {
-                                            pastInputText = ""
-                                            scope.launch { repo.saveSyncDaysPast(null) }
-                                        } else {
-                                            scope.launch { repo.saveSyncDaysPast(num) }
-                                        }
-                                    }
-                                }
-                        )
-
-                        // Days Forward
-                        OutlinedTextField(
-                            value = futureDisplayValue,
-                            onValueChange = { input ->
-                                val filtered = input.filter { it.isDigit() }.take(3)
-                                futureInputText = filtered
-                                val num = filtered.toIntOrNull()
-                                if (num != null && num in 1..999) {
-                                    if (num == 30) {
-                                        scope.launch { repo.saveSyncDaysFuture(null) }
-                                    } else {
-                                        scope.launch { repo.saveSyncDaysFuture(num) }
-                                    }
-                                } else if (filtered.isEmpty()) {
-                                    scope.launch { repo.saveSyncDaysFuture(null) }
-                                }
-                            },
-                            label = { Text("Days Forward") },
-                            supportingText = {
-                                Text(if (isFutureDefault) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
-                            },
-                            singleLine = true,
-                            enabled = !isOperating,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = if (isFutureDefault) defaultTextColor else normalTextColor,
-                                unfocusedTextColor = if (isFutureDefault) defaultTextColor else normalTextColor
-                            ),
-                            textStyle = LocalTextStyle.current.copy(
-                                color = if (isFutureDefault) defaultTextColor else normalTextColor
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    focusManager.clearFocus()
-                                }
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .onFocusChanged { focusState ->
-                                    val previouslyFocused = hadFutureFocus
-                                    hadFutureFocus = focusState.isFocused
-                                    isFutureFocused = focusState.isFocused
-                                    if (previouslyFocused && !focusState.isFocused) {
-                                        val num = futureInputText.toIntOrNull()
-                                        if (num == null || num <= 0 || num == 30) {
-                                            futureInputText = ""
-                                            scope.launch { repo.saveSyncDaysFuture(null) }
-                                        } else {
-                                            scope.launch { repo.saveSyncDaysFuture(num) }
-                                        }
-                                    }
-                                }
-                        )
-                    }
-
-                    Text(
-                        text = "Events outside this date window are automatically pruned from the clone calendar.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                    )
-
-                    // Unrestricted Battery Notice (displayed if scheduled background sync is enabled but battery is optimized)
+                    // Battery Optimization Warning Banner
                     AnimatedVisibility(
-                        visible = savedInterval > 0 && !isIgnoringBatteryOptimizations,
+                        visible = !isIgnoringBatteryOptimizations,
                         enter = fadeIn(tween(200)) + expandVertically(tween(250)),
                         exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
                     ) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
                         ) {
                             Column(
                                 modifier = Modifier.padding(12.dp),
@@ -955,20 +993,20 @@ fun CalendarSyncApp(
                                     Icon(
                                         imageVector = Icons.Default.Info,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
+                                        tint = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Text(
                                         text = "Unrestricted Battery Recommended",
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
                                     )
                                 }
                                 Text(
-                                    text = "Android may put CalCloner to sleep and delay background syncs. Set battery to Unrestricted for reliable intervals.",
+                                    text = "Android may defer background tasks during deep sleep. Set battery to Unrestricted for instant reactive sync.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                                 FilledTonalButton(
                                     modifier = Modifier.fillMaxWidth(),
@@ -994,287 +1032,7 @@ fun CalendarSyncApp(
                 }
             }
 
-            // CARD 3: TELEMETRY & PROGRESS STATUS
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = if (operationDone) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                                     else MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Last Synchronized",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Last Synchronized:",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(
-                            text = DateTimeUtils.formatLastSync(lastSyncTime),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (lastSyncTime != null && lastSyncTime!! > 0L) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    if (!lastSyncStatus.isNullOrEmpty()) {
-                        Text(
-                            text = lastSyncStatus!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (lastSyncStatus!!.startsWith("Failed") || lastSyncStatus!!.contains("denied") || lastSyncStatus!!.contains("Not Found")) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
-                            }
-                        )
-                    }
-
-                    // Active Progress & Live Feedback Section
-                    AnimatedVisibility(
-                        visible = isOperating || operationDone || progressStatusText.isNotEmpty(),
-                        enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-                        exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(top = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = when {
-                                        isSyncing -> "Cloning in Progress"
-                                        isNuking -> "Nuking Calendar (Deep Clean)"
-                                        isClearing -> "Clearing Clone Events"
-                                        operationDone -> "Operation Completed"
-                                        else -> "Live Status"
-                                    },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (operationDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                )
-
-                                if (isSyncing && progressFraction > 0f) {
-                                    Text(
-                                        text = "${(animatedProgress * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            // Native Material 3 Animated Linear Progress Bar
-                            if (isSyncing && progressFraction > 0f) {
-                                LinearProgressIndicator(
-                                    progress = animatedProgress.coerceIn(0f, 1f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp)),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            }
-
-                            Text(
-                                text = progressStatusText,
-                                style = MaterialTheme.typography.bodySmall,
-                                lineHeight = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            if (operationDone) {
-                                if (!progressStatusText.contains("Operation Completed")) {
-                                    Text(
-                                        text = "Operation finished. You can safely close the app.",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-
-                                if (progressStatusText.contains("Cleared") || progressStatusText.contains("purging") ||
-                                    progressStatusText.contains("Force") || progressStatusText.contains("wiped") ||
-                                    progressStatusText.contains("Pushed deletions")) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    FilledTonalButton(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        onClick = { SystemUtils.openNotificationShade(context) }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Notifications,
-                                            contentDescription = "Notification",
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Open Notification Shade (Confirm Cloud Deletes)", style = MaterialTheme.typography.labelMedium)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // CARD 4: DATA MANAGEMENT (3A - DISCRETE BOTTOM SECTION)
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Data Management",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = "Data Management",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                        ) {
-                            Text(
-                                text = "Clone Only",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Clean or reset the target clone calendar. Source events are strictly protected and never touched.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Divider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                    )
-
-                    // Clear Cloned Events (M3 Outlined Error Button)
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = isClearEnabled,
-                        onClick = {
-                            val toCal = selectedToCalendar ?: return@OutlinedButton
-                            scope.launch {
-                                clearTargetEventCount = withContext(Dispatchers.IO) {
-                                    CalendarSyncEngine.getCalendarEventCount(context, toCal.id)
-                                }
-                                showClearConfirmDialog = true
-                            }
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(
-                            1.dp,
-                            if (isClearEnabled) MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isClearing) "Deleting Cloned Events..." else "Delete Cloned Events from Target",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-
-                    // Nuke All Events (Force Cloud Resync & Deep Clean)
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = isClearEnabled,
-                        onClick = {
-                            showNukeConfirmDialog = true
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Nuke",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isNuking) "Nuking Calendar..." else "Nuke ALL Events (Force Cloud Resync)",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                }
-            }
-
-            // Bottom Spacer to prevent Extended FAB occlusion
+            // Bottom Spacer to prevent FAB occlusion
             Spacer(modifier = Modifier.height(84.dp))
         }
     }

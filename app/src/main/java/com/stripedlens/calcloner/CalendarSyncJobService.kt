@@ -7,6 +7,7 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import android.provider.CalendarContract
+import com.stripedlens.calcloner.util.SystemUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,7 +30,7 @@ class CalendarSyncJobService : JobService() {
         @Volatile
         private var lastKnownFingerprint: String = ""
 
-        fun reschedule(context: Context) {
+        fun reschedule(context: Context, syncOnLowBattery: Boolean = false) {
             val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as? JobScheduler ?: return
             val componentName = ComponentName(context, CalendarSyncJobService::class.java)
             val builder = JobInfo.Builder(CalendarSyncScheduler.REACTIVE_JOB_ID, componentName)
@@ -41,6 +42,11 @@ class CalendarSyncJobService : JobService() {
                 )
                 .setTriggerContentUpdateDelay(5_000L) // 5s debounce
                 .setTriggerContentMaxDelay(30_000L)   // 30s max batching
+                .apply {
+                    if (!syncOnLowBattery) {
+                        setRequiresBatteryNotLow(true)
+                    }
+                }
             jobScheduler.schedule(builder.build())
         }
     }
@@ -50,8 +56,14 @@ class CalendarSyncJobService : JobService() {
             try {
                 handleJob(params)
             } finally {
-                // Android JobScheduler Content URI triggers are one-shot; reschedule for next trigger
-                reschedule(applicationContext)
+                // Only reschedule if mode is Instant (0) and has enabled pairs
+                val repo = SettingsRepository(applicationContext)
+                val interval = repo.syncIntervalFlow.first()
+                val hasPairs = repo.syncPairsFlow.first().any { it.isEnabled }
+                if (interval == 0 && hasPairs) {
+                    val syncOnLow = repo.syncOnLowBatteryFlow.first()
+                    reschedule(applicationContext, syncOnLow)
+                }
                 jobFinished(params, false)
             }
         }
@@ -65,6 +77,14 @@ class CalendarSyncJobService : JobService() {
 
     private suspend fun handleJob(params: JobParameters?) {
         val repo = SettingsRepository(applicationContext)
+        val interval = repo.syncIntervalFlow.first()
+        if (interval != 0) return
+
+        val syncOnLow = repo.syncOnLowBatteryFlow.first()
+        if (!syncOnLow && SystemUtils.isLowPowerOrBattery(applicationContext)) {
+            return
+        }
+
         val pairs = repo.syncPairsFlow.first().filter { it.isEnabled }
         if (pairs.isEmpty()) return
 

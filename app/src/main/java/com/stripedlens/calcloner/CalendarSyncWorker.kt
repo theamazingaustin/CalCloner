@@ -19,6 +19,11 @@ class CalendarSyncWorker(
 
     override suspend fun doWork(): Result {
         val repo = SettingsRepository(appContext)
+        val syncOnLow = repo.syncOnLowBatteryFlow.first()
+        if (!syncOnLow && com.stripedlens.calcloner.util.SystemUtils.isLowPowerOrBattery(appContext)) {
+            return Result.retry()
+        }
+
         val allPairs = repo.syncPairsFlow.first()
         val enabledPairs = allPairs.filter { it.isEnabled }
 

@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
         val LAST_SYNC_TIME = longPreferencesKey("last_sync_time")
         val LAST_SYNC_STATUS = stringPreferencesKey("last_sync_status")
         val SYNC_PAIRS_JSON = stringPreferencesKey("sync_pairs_json")
+        val SYNC_ON_LOW_BATTERY = booleanPreferencesKey("sync_on_low_battery")
 
         const val CURRENT_DISCLAIMER_VERSION = 1
     }
@@ -76,7 +77,7 @@ class SettingsRepository(private val context: Context) {
     val fromCalendarNameFlow: Flow<String?> = context.dataStore.data.map { it[FROM_CALENDAR_NAME] }
     val toCalendarIdFlow: Flow<Long?> = context.dataStore.data.map { it[TO_CALENDAR_ID] }
     val toCalendarNameFlow: Flow<String?> = context.dataStore.data.map { it[TO_CALENDAR_NAME] }
-    val syncIntervalFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_INTERVAL] ?: 60 } // Default 60 mins
+    val syncIntervalFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_INTERVAL] ?: 0 } // Default Instant (0)
     val customDaysPastFlow: Flow<Int?> = context.dataStore.data.map {
         val v = it[SYNC_DAYS_PAST]
         if (v == null || v == 30) null else v
@@ -98,6 +99,10 @@ class SettingsRepository(private val context: Context) {
         (it[DISCLAIMER_VERSION_ACCEPTED] ?: 0) >= CURRENT_DISCLAIMER_VERSION
     }
 
+    val syncOnLowBatteryFlow: Flow<Boolean> = context.dataStore.data.map {
+        it[SYNC_ON_LOW_BATTERY] ?: false
+    }
+
     suspend fun saveFromCalendar(id: Long?, name: String?) {
         context.dataStore.edit { preferences ->
             if (id != null) preferences[FROM_CALENDAR_ID] = id else preferences.remove(FROM_CALENDAR_ID)
@@ -115,6 +120,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveSyncInterval(interval: Int) {
         context.dataStore.edit { preferences ->
             preferences[SYNC_INTERVAL] = interval
+        }
+    }
+
+    suspend fun saveSyncOnLowBattery(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SYNC_ON_LOW_BATTERY] = enabled
         }
     }
 

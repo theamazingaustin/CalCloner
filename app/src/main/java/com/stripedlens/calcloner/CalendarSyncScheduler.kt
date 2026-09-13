@@ -11,8 +11,8 @@ object CalendarSyncScheduler {
     private const val WORK_NAME = "PeriodicCalendarSync"
     const val REACTIVE_JOB_ID = 2001
 
-    fun scheduleReactiveSync(context: Context) {
-        CalendarSyncJobService.reschedule(context)
+    fun scheduleReactiveSync(context: Context, syncOnLowBattery: Boolean = false) {
+        CalendarSyncJobService.reschedule(context, syncOnLowBattery)
     }
 
     fun cancelReactiveSync(context: Context) {
@@ -20,7 +20,7 @@ object CalendarSyncScheduler {
         jobScheduler.cancel(REACTIVE_JOB_ID)
     }
 
-    fun scheduleSync(context: Context, intervalMinutes: Int) {
+    fun scheduleSync(context: Context, intervalMinutes: Int, syncOnLowBattery: Boolean = false) {
         if (intervalMinutes <= 0) {
             cancelSync(context)
             return
@@ -29,9 +29,11 @@ object CalendarSyncScheduler {
         // WorkManager enforces minimum 15 minute interval
         val safeMinutes = intervalMinutes.coerceAtLeast(15)
 
-        val constraints = Constraints.Builder()
-            .setRequiresBatteryNotLow(true)
-            .build()
+        val constraints = Constraints.Builder().apply {
+            if (!syncOnLowBattery) {
+                setRequiresBatteryNotLow(true)
+            }
+        }.build()
 
         val syncRequest = PeriodicWorkRequestBuilder<CalendarSyncWorker>(
             safeMinutes.toLong(),

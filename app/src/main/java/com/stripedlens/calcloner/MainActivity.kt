@@ -125,22 +125,25 @@ fun CalendarSyncApp(
 
     var availableCalendars by remember { mutableStateOf<List<CalendarInfo>>(emptyList()) }
     val syncPairs by repo.syncPairsFlow.collectAsState(initial = emptyList())
-    val savedInterval by repo.syncIntervalFlow.collectAsState(initial = 60)
+    val savedInterval by repo.syncIntervalFlow.collectAsState(initial = 0)
+    val syncOnLowBattery by repo.syncOnLowBatteryFlow.collectAsState(initial = false)
     val isDisclaimerAccepted by repo.disclaimerAcceptedFlow.collectAsState(initial = true)
 
-    // Automatically manage reactive and periodic background sync
-    LaunchedEffect(syncPairs, savedInterval) {
+    // Automatically manage reactive and periodic background sync based on user's mode
+    LaunchedEffect(syncPairs, savedInterval, syncOnLowBattery) {
         val enabledPairs = syncPairs.filter { it.isEnabled }
-        if (enabledPairs.isNotEmpty()) {
-            CalendarSyncScheduler.scheduleReactiveSync(context)
-            if (savedInterval > 0) {
-                CalendarSyncScheduler.scheduleSync(context, savedInterval)
-            } else {
-                CalendarSyncScheduler.cancelSync(context)
-            }
-        } else {
+        if (enabledPairs.isEmpty() || savedInterval == -1) {
+            // "Never (manual only)": Cancel ALL auto and instant sync
             CalendarSyncScheduler.cancelReactiveSync(context)
             CalendarSyncScheduler.cancelSync(context)
+        } else if (savedInterval == 0) {
+            // "Instant": Enable reactive sync, cancel periodic sync
+            CalendarSyncScheduler.scheduleReactiveSync(context, syncOnLowBattery)
+            CalendarSyncScheduler.cancelSync(context)
+        } else {
+            // Specific interval: Disable instant reactive sync, schedule periodic sync
+            CalendarSyncScheduler.cancelReactiveSync(context)
+            CalendarSyncScheduler.scheduleSync(context, savedInterval, syncOnLowBattery)
         }
     }
 
@@ -858,22 +861,38 @@ fun CalendarSyncApp(
 
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            color = when (savedInterval) {
+                                0 -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                -1 -> MaterialTheme.colorScheme.surfaceVariant
+                                else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                            }
                         ) {
                             Text(
-                                text = "Zero-Drain",
+                                text = when (savedInterval) {
+                                    0 -> "Zero-Drain"
+                                    -1 -> "Manual"
+                                    else -> "Periodic"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = when (savedInterval) {
+                                    0 -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    -1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                                },
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
 
-                    // Reactive Sync Status Badge
+                    // Dynamic Sync Status Badge
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                        color = when (savedInterval) {
+                            0 -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                            -1 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -882,41 +901,67 @@ fun CalendarSyncApp(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                imageVector = when (savedInterval) {
+                                    0 -> Icons.Default.CheckCircle
+                                    -1 -> Icons.Default.Close
+                                    else -> Icons.Default.Refresh
+                                },
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
+                                tint = when (savedInterval) {
+                                    0 -> MaterialTheme.colorScheme.secondary
+                                    -1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
                                 modifier = Modifier.size(20.dp)
                             )
                             Column {
                                 Text(
-                                    text = "Reactive Sync: Active",
+                                    text = when (savedInterval) {
+                                        0 -> "Instant Sync: Active"
+                                        -1 -> "Auto-Sync: Disabled"
+                                        else -> "Periodic Sync: Active"
+                                    },
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    color = when (savedInterval) {
+                                        0 -> MaterialTheme.colorScheme.onSecondaryContainer
+                                        -1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    }
                                 )
                                 Text(
-                                    text = "Event-driven Content URI triggers sync changes within ~5s without polling battery drain.",
+                                    text = when (savedInterval) {
+                                        0 -> "Event-driven Content URI triggers sync changes within ~5s without polling battery drain."
+                                        -1 -> "All automatic and instant syncing is turned off. Sync can only be triggered manually."
+                                        else -> "Syncs automatically at the selected interval. Instant reactive sync is disabled."
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    color = when (savedInterval) {
+                                        0 -> MaterialTheme.colorScheme.onSecondaryContainer
+                                        -1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    }
                                 )
                             }
                         }
                     }
 
-                    // Scheduled Background Fallback Selector
+                    // Sync Mode & Interval Selector
                     var showIntervalMenu by remember { mutableStateOf(false) }
                     val intervalOptions = listOf(
-                        0 to "Disabled (Reactive Only)",
+                        -1 to "Never (manual only)",
+                        0 to "Instant (~5s reactive)",
                         15 to "Every 15 minutes",
                         30 to "Every 30 minutes",
-                        60 to "Every 1 hour (Default)",
+                        60 to "Every 1 hour",
                         180 to "Every 3 hours",
                         360 to "Every 6 hours",
                         720 to "Every 12 hours",
-                        1440 to "Every 24 hours"
+                        1440 to "Every 24 hours (1x a day)"
                     )
 
-                    val currentIntervalLabel = intervalOptions.find { it.first == savedInterval }?.second ?: "Every $savedInterval minutes"
+                    val currentIntervalLabel = intervalOptions.find { it.first == savedInterval }?.second
+                        ?: if (savedInterval > 0) "Every $savedInterval minutes" else "Never (manual only)"
 
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedCard(
@@ -933,7 +978,7 @@ fun CalendarSyncApp(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Periodic Safety-Net Sync",
+                                        text = "Sync Mode & Interval",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -971,9 +1016,47 @@ fun CalendarSyncApp(
                         }
                     }
 
+                    // Low Battery / Power Saver Setting (Option 1: Global Setting)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                Text(
+                                    text = "Sync on Low Battery / Power Saver",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (syncOnLowBattery) {
+                                        "Sync will proceed even when battery is low (<15%) or Power Saver is active."
+                                    } else {
+                                        "Paused when battery is low (<15%) or Power Saver is active (0 CPU wakeups)."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = syncOnLowBattery,
+                                onCheckedChange = { checked ->
+                                    scope.launch { repo.saveSyncOnLowBattery(checked) }
+                                }
+                            )
+                        }
+                    }
+
                     // Battery Optimization Warning Banner
                     AnimatedVisibility(
-                        visible = !isIgnoringBatteryOptimizations,
+                        visible = savedInterval != -1 && !isIgnoringBatteryOptimizations,
                         enter = fadeIn(tween(200)) + expandVertically(tween(250)),
                         exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
                     ) {

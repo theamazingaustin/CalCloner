@@ -19,6 +19,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +53,7 @@ import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.util.DateTimeUtils
 import com.stripedlens.calcloner.util.SystemUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -128,8 +132,6 @@ fun CalendarSyncApp(
     val savedInterval by repo.syncIntervalFlow.collectAsState(initial = 60)
     val customDaysPast by repo.customDaysPastFlow.collectAsState(initial = null)
     val customDaysFuture by repo.customDaysFutureFlow.collectAsState(initial = null)
-    val savedDaysPast by repo.syncDaysPastFlow.collectAsState(initial = 30)
-    val savedDaysFuture by repo.syncDaysFutureFlow.collectAsState(initial = 30)
     val lastSyncTime by repo.lastSyncTimeFlow.collectAsState(initial = null)
     val lastSyncStatus by repo.lastSyncStatusFlow.collectAsState(initial = null)
     val isDisclaimerAccepted by repo.disclaimerAcceptedFlow.collectAsState(initial = true)
@@ -420,13 +422,15 @@ fun CalendarSyncApp(
 
                     scope.launch {
                         try {
+                            val daysPast = repo.syncDaysPastFlow.first()
+                            val daysFuture = repo.syncDaysFutureFlow.first()
                             val result = withContext(Dispatchers.IO) {
                                 CalendarSyncEngine.syncEventsToTarget(
                                     context = context,
                                     fromCalendarId = fromCal.id,
                                     toCalendarId = toCal.id,
-                                    daysPast = savedDaysPast,
-                                    daysFuture = savedDaysFuture,
+                                    daysPast = daysPast,
+                                    daysFuture = daysFuture,
                                     onProgress = { current, total, msg ->
                                         scope.launch(Dispatchers.Main) {
                                             progressFraction = if (total > 0) current.toFloat() / total else 0f
@@ -758,35 +762,47 @@ fun CalendarSyncApp(
                     }
 
                     // Sync Window Range (Days Back / Days Forward)
+                    val focusManager = LocalFocusManager.current
                     var isPastFocused by remember { mutableStateOf(false) }
+                    var hadPastFocus by remember { mutableStateOf(false) }
                     var pastInputText by remember { mutableStateOf("") }
+
                     var isFutureFocused by remember { mutableStateOf(false) }
+                    var hadFutureFocus by remember { mutableStateOf(false) }
                     var futureInputText by remember { mutableStateOf("") }
 
-                    LaunchedEffect(customDaysPast, isPastFocused) {
+                    LaunchedEffect(customDaysPast) {
                         if (!isPastFocused) {
-                            pastInputText = customDaysPast?.toString() ?: ""
+                            pastInputText = if (customDaysPast != null && customDaysPast != 30) customDaysPast.toString() else ""
                         }
                     }
 
-                    LaunchedEffect(customDaysFuture, isFutureFocused) {
+                    LaunchedEffect(customDaysFuture) {
                         if (!isFutureFocused) {
-                            futureInputText = customDaysFuture?.toString() ?: ""
+                            futureInputText = if (customDaysFuture != null && customDaysFuture != 30) customDaysFuture.toString() else ""
                         }
                     }
 
-                    val isPastDefault = customDaysPast == null
+                    val isPastDefault = when {
+                        isPastFocused -> pastInputText.isEmpty() || pastInputText == "30"
+                        else -> customDaysPast == null || customDaysPast == 30
+                    }
+
                     val pastDisplayValue = when {
                         isPastFocused -> pastInputText
                         isPastDefault -> "30"
-                        else -> pastInputText.ifEmpty { customDaysPast?.toString() ?: "30" }
+                        else -> if (pastInputText.isNotEmpty()) pastInputText else (customDaysPast?.toString() ?: "30")
                     }
 
-                    val isFutureDefault = customDaysFuture == null
+                    val isFutureDefault = when {
+                        isFutureFocused -> futureInputText.isEmpty() || futureInputText == "30"
+                        else -> customDaysFuture == null || customDaysFuture == 30
+                    }
+
                     val futureDisplayValue = when {
                         isFutureFocused -> futureInputText
                         isFutureDefault -> "30"
-                        else -> futureInputText.ifEmpty { customDaysFuture?.toString() ?: "30" }
+                        else -> if (futureInputText.isNotEmpty()) futureInputText else (customDaysFuture?.toString() ?: "30")
                     }
 
                     val defaultTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -804,37 +820,50 @@ fun CalendarSyncApp(
                                 pastInputText = filtered
                                 val num = filtered.toIntOrNull()
                                 if (num != null && num in 1..999) {
-                                    scope.launch { repo.saveSyncDaysPast(num) }
+                                    if (num == 30) {
+                                        scope.launch { repo.saveSyncDaysPast(null) }
+                                    } else {
+                                        scope.launch { repo.saveSyncDaysPast(num) }
+                                    }
                                 } else if (filtered.isEmpty()) {
                                     scope.launch { repo.saveSyncDaysPast(null) }
                                 }
                             },
                             label = { Text("Days Back") },
                             supportingText = {
-                                Text(if (isPastDefault && !isPastFocused) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
+                                Text(if (isPastDefault) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
                             },
                             singleLine = true,
                             enabled = !isOperating,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = normalTextColor,
+                                focusedTextColor = if (isPastDefault) defaultTextColor else normalTextColor,
                                 unfocusedTextColor = if (isPastDefault) defaultTextColor else normalTextColor
                             ),
                             textStyle = LocalTextStyle.current.copy(
-                                color = if (isPastDefault && !isPastFocused) defaultTextColor else normalTextColor
+                                color = if (isPastDefault) defaultTextColor else normalTextColor
                             ),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Next
                             ),
+                            keyboardActions = KeyboardActions(
+                                onNext = {
+                                    focusManager.moveFocus(FocusDirection.Next)
+                                }
+                            ),
                             modifier = Modifier
                                 .weight(1f)
                                 .onFocusChanged { focusState ->
+                                    val previouslyFocused = hadPastFocus
+                                    hadPastFocus = focusState.isFocused
                                     isPastFocused = focusState.isFocused
-                                    if (!focusState.isFocused) {
+                                    if (previouslyFocused && !focusState.isFocused) {
                                         val num = pastInputText.toIntOrNull()
-                                        if (num == null || num <= 0) {
+                                        if (num == null || num <= 0 || num == 30) {
                                             pastInputText = ""
                                             scope.launch { repo.saveSyncDaysPast(null) }
+                                        } else {
+                                            scope.launch { repo.saveSyncDaysPast(num) }
                                         }
                                     }
                                 }
@@ -848,37 +877,50 @@ fun CalendarSyncApp(
                                 futureInputText = filtered
                                 val num = filtered.toIntOrNull()
                                 if (num != null && num in 1..999) {
-                                    scope.launch { repo.saveSyncDaysFuture(num) }
+                                    if (num == 30) {
+                                        scope.launch { repo.saveSyncDaysFuture(null) }
+                                    } else {
+                                        scope.launch { repo.saveSyncDaysFuture(num) }
+                                    }
                                 } else if (filtered.isEmpty()) {
                                     scope.launch { repo.saveSyncDaysFuture(null) }
                                 }
                             },
                             label = { Text("Days Forward") },
                             supportingText = {
-                                Text(if (isFutureDefault && !isFutureFocused) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
+                                Text(if (isFutureDefault) "Default: 30" else "1 - 999 days", fontSize = 11.sp)
                             },
                             singleLine = true,
                             enabled = !isOperating,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = normalTextColor,
+                                focusedTextColor = if (isFutureDefault) defaultTextColor else normalTextColor,
                                 unfocusedTextColor = if (isFutureDefault) defaultTextColor else normalTextColor
                             ),
                             textStyle = LocalTextStyle.current.copy(
-                                color = if (isFutureDefault && !isFutureFocused) defaultTextColor else normalTextColor
+                                color = if (isFutureDefault) defaultTextColor else normalTextColor
                             ),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Done
                             ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                }
+                            ),
                             modifier = Modifier
                                 .weight(1f)
                                 .onFocusChanged { focusState ->
+                                    val previouslyFocused = hadFutureFocus
+                                    hadFutureFocus = focusState.isFocused
                                     isFutureFocused = focusState.isFocused
-                                    if (!focusState.isFocused) {
+                                    if (previouslyFocused && !focusState.isFocused) {
                                         val num = futureInputText.toIntOrNull()
-                                        if (num == null || num <= 0) {
+                                        if (num == null || num <= 0 || num == 30) {
                                             futureInputText = ""
                                             scope.launch { repo.saveSyncDaysFuture(null) }
+                                        } else {
+                                            scope.launch { repo.saveSyncDaysFuture(num) }
                                         }
                                     }
                                 }

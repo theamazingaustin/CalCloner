@@ -42,8 +42,14 @@ class SettingsRepository(private val context: Context) {
     val toCalendarIdFlow: Flow<Long?> = context.dataStore.data.map { it[TO_CALENDAR_ID] }
     val toCalendarNameFlow: Flow<String?> = context.dataStore.data.map { it[TO_CALENDAR_NAME] }
     val syncIntervalFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_INTERVAL] ?: 60 } // Default 60 mins
-    val customDaysPastFlow: Flow<Int?> = context.dataStore.data.map { it[SYNC_DAYS_PAST] }
-    val customDaysFutureFlow: Flow<Int?> = context.dataStore.data.map { it[SYNC_DAYS_FUTURE] }
+    val customDaysPastFlow: Flow<Int?> = context.dataStore.data.map {
+        val v = it[SYNC_DAYS_PAST]
+        if (v == null || v == 30) null else v
+    }
+    val customDaysFutureFlow: Flow<Int?> = context.dataStore.data.map {
+        val v = it[SYNC_DAYS_FUTURE]
+        if (v == null || v == 30) null else v
+    }
     val syncDaysPastFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_DAYS_PAST] ?: 30 } // Default 30 days back
     val syncDaysFutureFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_DAYS_FUTURE] ?: 30 } // Default 30 days forward
     val lastSyncTimeFlow: Flow<Long?> = context.dataStore.data.map { it[LAST_SYNC_TIME] }
@@ -79,7 +85,7 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveSyncDaysPast(days: Int?) {
         context.dataStore.edit { preferences ->
-            if (days != null) {
+            if (days != null && days != 30) {
                 preferences[SYNC_DAYS_PAST] = days
             } else {
                 preferences.remove(SYNC_DAYS_PAST)
@@ -89,7 +95,7 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveSyncDaysFuture(days: Int?) {
         context.dataStore.edit { preferences ->
-            if (days != null) {
+            if (days != null && days != 30) {
                 preferences[SYNC_DAYS_FUTURE] = days
             } else {
                 preferences.remove(SYNC_DAYS_FUTURE)

@@ -60,3 +60,12 @@ __pycache__/
 
 # Graft local cache
 /graft/
+
+# Agent, development, and testing tools
+.agents/
+.claude/
+.codex/
+.impeccable/
+*.code-workspace
+.ignore
+.mcp.json

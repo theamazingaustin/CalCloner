@@ -56,9 +56,9 @@ fun DisclaimerConsentDialog(
                 }
 
                 Text(
-                    text = "Developed by StripedLens (StripedLens.com)",
+                    text = "Safe Synchronization & Terms of Use",
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
 
@@ -105,7 +105,7 @@ fun DisclaimerConsentDialog(
                 }
 
                 Text(
-                    text = "Responsibility & As-Is Notice: While CalCloner is crafted with strict safeguards, unforeseen device quirks, sync provider issues, or bugs can occur. CalCloner is provided on an 'AS IS' basis. You assume all responsibility for your choice of target calendar and data backups. StripedLens is not liable for data loss, accidental glitches, or platform sync behavior.",
+                    text = "Responsibility & As-Is Notice: While CalCloner is crafted with strict safeguards, unforeseen device quirks, sync provider issues, or bugs can occur. CalCloner is provided on an 'AS IS' basis. You assume all responsibility for your choice of target calendar and data backups. The developer is not liable for data loss, accidental glitches, or platform sync behavior.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

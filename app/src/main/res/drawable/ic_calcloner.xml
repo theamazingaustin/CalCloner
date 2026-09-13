@@ -1,0 +1,40 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background Circle/Tile with rounded slate backdrop -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M18,12 h72 a18,18 0 0 1 18,18 v48 a18,18 0 0 1 -18,18 h-72 a18,18 0 0 1 -18,-18 v-48 a18,18 0 0 1 18,-18 z" />
+
+    <!-- Back Calendar Sheet (Cloned replica silhouette) -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M32,24 h44 c3.3,0 6,2.7 6,6 v42 c0,3.3 -2.7,6 -6,6 h-44 c-3.3,0 -6,-2.7 -6,-6 v-42 c0,-3.3 2.7,-6 6,-6 z" />
+
+    <!-- Front Calendar Sheet Body -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M24,34 h44 c3.3,0 6,2.7 6,6 v42 c0,3.3 -2.7,6 -6,6 h-44 c-3.3,0 -6,-2.7 -6,-6 v-42 c0,-3.3 2.7,-6 6,-6 z" />
+
+    <!-- Front Calendar Header Bar -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M24,34 h44 c3.3,0 6,2.7 6,6 v10 h-56 v-10 c0,-3.3 2.7,-6 6,-6 z" />
+
+    <!-- Calendar Ring / Binder Clips -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M32,30 h4 v8 h-4 z M56,30 h4 v8 h-4 z" />
+
+    <!-- Twin Sync / Clone Loop Arrows in Calendar Center -->
+    <!-- Top Arrow Curve -->
+    <path
+        android:fillColor="#0F766E"
+        android:pathData="M46,58 A 8,8 0 0 1 54,54 L 54,51 L 60,56 L 54,61 L 54,58 A 4,4 0 0 0 46,62 Z" />
+    <!-- Bottom Arrow Curve -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M46,66 A 8,8 0 0 1 38,62 L 38,65 L 32,60 L 38,55 L 38,58 A 4,4 0 0 0 46,70 Z" />
+</vector>

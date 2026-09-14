@@ -1,18 +1,21 @@
 package com.stripedlens.calcloner.ui.dialogs
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,149 +24,130 @@ import androidx.compose.ui.window.DialogProperties
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.ui.components.SwipeToConfirmSlider
+import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import kotlinx.coroutines.delay
 
 /**
- * Target Calendar Warning Dialog
- * Shows event count (green if empty, warning red if populated)
- * 5-second lock + swipe slider to confirm.
+ * Educational Popover Dialog for Source ("Read Only") and Target ("Writable Replica")
  */
 @Composable
-fun TargetCalendarWarningDialog(
-    calendar: CalendarInfo,
-    eventCount: Int,
-    onDismiss: () -> Unit,
-    onConfirmSelection: () -> Unit
+fun CalendarInfoPopoverDialog(
+    type: String, // "source" or "target"
+    onDismiss: () -> Unit
 ) {
-    var countdown by remember { mutableIntStateOf(5) }
-
-    LaunchedEffect(Unit) {
-        countdown = 5
-        while (countdown > 0) {
-            delay(1000L)
-            countdown--
-        }
+    val isSource = type == "source"
+    val title = if (isSource) "Primary Account" else "Writable Replica"
+    val subtitle = if (isSource) "SOURCE CALENDAR" else "TARGET CALENDAR"
+    val icon = if (isSource) Icons.Default.DateRange else Icons.Default.Refresh
+    val description = if (isSource) {
+        "Events will be copied from this calendar. The source calendar and its events will never be altered, edited, or written to by CalCloner."
+    } else {
+        "This calendar will be populated with all events found in the source calendar. In case there is a bug or glitch, it is highly recommended to sync to a blank calendar, not a calendar mixed with other / manually created events."
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
-    ) {
-        Card(
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.4f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth()
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Target Calendar Warning",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Text(
-                    text = "Selected Clone Calendar:\n\"${calendar.displayName}\" (${calendar.accountName})",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                // Event count status card
-                if (eventCount == 0) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7)) // Light green
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.3f)),
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Empty",
-                                tint = Color(0xFF166534),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "This calendar appears to be empty.",
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF166534),
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2)) // Light red
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "Warning",
-                                    tint = Color(0xFF991B1B),
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = TitaniumMint.Mint400,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "This calendar currently has $eventCount event(s)!",
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF991B1B),
-                                    fontSize = 13.sp
-                                )
                             }
+                        }
+                        Column {
                             Text(
-                                text = "It is strongly recommended to use a BLANK calendar so if anything goes wrong the calendar can simply be deleted without touching other events.",
-                                color = Color(0xFF7F1D1D),
-                                fontSize = 12.sp
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = subtitle,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TitaniumMint.Mint400,
+                                letterSpacing = 0.8.sp
                             )
                         }
                     }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
-                Text(
-                    text = "What CalCloner will do:\n• Replicates events from your source calendar into this clone calendar.\n• Cloned events will be inserted and kept up-to-date.\n• CRITICAL: The delete button wipes ALL events in this calendar (not just cloned events).",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = "SAFEGUARD: The SOURCE calendar is strictly read-only and will NEVER be altered.",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                // Swipe slider with 5s countdown
-                SwipeToConfirmSlider(
-                    text = "Slide to Select Target ->",
-                    lockSeconds = countdown,
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    onConfirmed = onConfirmSelection
-                )
-
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onDismiss
+                // Description Box
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Cancel")
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp),
+                        lineHeight = 20.sp
+                    )
+                }
+
+                // Got it Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
+                    ) {
+                        Text(
+                            text = "Got it",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF003824)
+                        )
+                    }
                 }
             }
         }
@@ -171,14 +155,11 @@ fun TargetCalendarWarningDialog(
 }
 
 /**
- * Delete (Clear) Clone Events Dialog
- * Shows event count to be deleted
- * 5-second lock + swipe slider to confirm deletion.
+ * Dedicated Delete Cloned Events Confirmation Modal (with 5-second countdown lock)
  */
 @Composable
-fun ClearCloneEventsDialog(
-    calendar: CalendarInfo,
-    eventCount: Int,
+fun ClearPairClonedEventsDialog(
+    targetCalendarName: String,
     onDismiss: () -> Unit,
     onConfirmDelete: () -> Unit
 ) {
@@ -196,95 +177,201 @@ fun ClearCloneEventsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
     ) {
-        Card(
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.4f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                .padding(12.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth()
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Delete ALL Events from Calendar?",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-
-                Text(
-                    text = "Target Calendar: \"${calendar.displayName}\"",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "⚠️ WARNING: PERMANENTLY ERASES ALL EVENTS",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = if (eventCount > 0)
-                                "This will delete ALL $eventCount event(s) currently in \"${calendar.displayName}\".\n\nThis wipes EVERY event in this calendar — including any personal, preexisting, or manually created events, NOT just events cloned by this app."
-                            else
-                                "This will delete ALL events inside \"${calendar.displayName}\" (currently appears to have 0 events).",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "SAFEGUARD GUARANTEE",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = "The SOURCE calendar will NEVER be edited, modified, or deleted.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-
-                // Swipe slider with 5s countdown
-                SwipeToConfirmSlider(
-                    text = "Slide to Delete ALL Events ->",
-                    lockSeconds = countdown,
-                    accentColor = MaterialTheme.colorScheme.error,
-                    onConfirmed = onConfirmDelete
-                )
-
-                OutlinedButton(
+                // Header
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = onDismiss
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text("Cancel")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = TitaniumMint.Rose500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.4f)),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.EventBusy,
+                                    contentDescription = null,
+                                    tint = TitaniumMint.Rose400,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Delete Cloned Events?",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "REPLICA MAINTENANCE",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TitaniumMint.Rose400,
+                                letterSpacing = 0.8.sp
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Informative Target Notice
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Events will ONLY be deleted from target calendar:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = targetCalendarName,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        // Re-clone warning
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = TitaniumMint.Amber500.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = TitaniumMint.Amber400,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "Note: These events will be cloned again on the next sync run if this pair is not disabled or paused.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TitaniumMint.Amber400,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Safety Countdown Lock Banner
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, if (countdown > 0) MaterialTheme.colorScheme.outlineVariant else TitaniumMint.Mint500.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (countdown > 0) Icons.Default.HourglassTop else Icons.Default.LockOpen,
+                                contentDescription = null,
+                                tint = if (countdown > 0) MaterialTheme.colorScheme.onSurfaceVariant else TitaniumMint.Mint400,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = if (countdown > 0) "Please wait ${countdown}s to confirm..." else "Safety delay passed. Actions unlocked.",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = if (countdown > 0) "${countdown}s" else "Unlocked",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = if (countdown > 0) MaterialTheme.colorScheme.onSurfaceVariant else TitaniumMint.Mint400
+                        )
+                    }
+                }
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onConfirmDelete,
+                        enabled = countdown == 0,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TitaniumMint.Rose500,
+                            disabledContainerColor = TitaniumMint.Rose500.copy(alpha = 0.25f)
+                        )
+                    ) {
+                        Text(
+                            text = "Delete Cloned Events",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = if (countdown == 0) Color.White else Color.White.copy(alpha = 0.4f)
+                        )
+                    }
                 }
             }
         }
@@ -292,15 +379,14 @@ fun ClearCloneEventsDialog(
 }
 
 /**
- * Nuke Confirmation Dialog:
- * Forces Google Cloud downstream sync before wiping 100% of events from selected calendar.
- * 5-second lock + swipe slider to confirm.
+ * Destructive "Delete ALL Calendar Events" Modal (with Dual Swipe Sliders)
  */
 @Composable
-fun NukeCalendarEventsDialog(
+fun NukeAllTargetEventsDialog(
     calendar: CalendarInfo,
     onDismiss: () -> Unit,
-    onConfirmNuke: () -> Unit
+    onConfirmNormalDelete: () -> Unit,
+    onConfirmForceNuke: () -> Unit
 ) {
     var countdown by remember { mutableIntStateOf(5) }
 
@@ -316,76 +402,255 @@ fun NukeCalendarEventsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
     ) {
-        Card(
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.5f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                .padding(8.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .fillMaxWidth()
+                    .padding(18.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Nuke",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "NUKE & Deep Clean Calendar?",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-
-                Text(
-                    text = "Target Calendar: \"${calendar.displayName}\"",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "☢️ COMPLETE 3-STEP CLOUD & LOCAL PURGE",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 13.sp
-                        )
-                        Text(
-                            text = "1. Forces Google Cloud to download all orphaned/cloud events to this phone.\n" +
-                                   "2. Deletes 100% of ALL events in \"${calendar.displayName}\" (both local & newly downloaded).\n" +
-                                   "3. Pushes deletion tombstones to Google Cloud to permanently wipe them.\n\n" +
-                                   "⚠️ This wipes EVERY event in this calendar, including any personal or manually created events. Source calendar will NOT be touched.",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = TitaniumMint.Rose500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.4f)),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = TitaniumMint.Rose400,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Delete All Calendar Events",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "TARGET CALENDAR WIPE",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TitaniumMint.Rose400,
+                                letterSpacing = 0.8.sp
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                SwipeToConfirmSlider(
-                    text = "Slide to NUKE ALL Events ->",
-                    lockSeconds = countdown,
-                    accentColor = MaterialTheme.colorScheme.error,
-                    onConfirmed = onConfirmNuke
-                )
-
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onDismiss
+                // Permanent Warning Notice
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = TitaniumMint.Rose500.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Cancel")
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "This action will permanently wipe ALL events directly from target calendar:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.background,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "${calendar.displayName} (${calendar.accountName})",
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                        Text(
+                            text = "Source calendar will remain completely untouched.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TitaniumMint.Mint400,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                // 5-Second Countdown Lock Banner
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, if (countdown > 0) MaterialTheme.colorScheme.outlineVariant else TitaniumMint.Mint500.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (countdown > 0) Icons.Default.HourglassTop else Icons.Default.LockOpen,
+                                contentDescription = null,
+                                tint = if (countdown > 0) TitaniumMint.Amber400 else TitaniumMint.Mint400,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = if (countdown > 0) "Please review carefully (${countdown}s remaining)..." else "Safety delay passed. Actions unlocked.",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = if (countdown > 0) "${countdown}s" else "Unlocked",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = if (countdown > 0) TitaniumMint.Amber400 else TitaniumMint.Mint400
+                        )
+                    }
+                }
+
+                // Option A: Delete All Events (Normal Wipe)
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Option A: Delete All Events",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Normal",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "Cleanly delete ALL calendar events from the target calendar, not just the events created with this app.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.5.sp
+                        )
+                        SwipeToConfirmSlider(
+                            text = "Swipe to Delete ->",
+                            lockSeconds = countdown,
+                            accentColor = TitaniumMint.Rose500,
+                            onConfirmed = onConfirmNormalDelete
+                        )
+                    }
+                }
+
+                // Option B: Force Delete All Events (Cloud Resync Wipe)
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = TitaniumMint.Rose500.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Option B: Force Delete All Events",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TitaniumMint.Rose400
+                            )
+                            Text(
+                                text = "Deep Wipe",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TitaniumMint.Rose400
+                            )
+                        }
+                        Text(
+                            text = "A more involved 3-step process to download orphaned cloud events and permanently wipe ALL events from Google Cloud.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.5.sp
+                        )
+                        SwipeToConfirmSlider(
+                            text = "Swipe to Force Delete ->",
+                            lockSeconds = countdown,
+                            accentColor = TitaniumMint.Rose400,
+                            onConfirmed = onConfirmForceNuke
+                        )
+                    }
+                }
+
+                // Cancel Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
             }
         }
@@ -403,73 +668,90 @@ fun DeletePairDialog(
     onDeleteKeepEvents: () -> Unit,
     onDeleteAndClearEvents: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete Pair",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(28.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "Delete Sync Pair?",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.4f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Pair",
+                        tint = TitaniumMint.Rose400,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "Delete Sync Pair?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Text(
                     text = "You are deleting the sync pair between \"${pair.fromCalendarName}\" and \"${pair.toCalendarName}\".",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "What would you like to do with the events already cloned on \"${pair.toCalendarName}\"?",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = "• Keep Cloned Events: The sync stops, but cloned events remain on \"${pair.toCalendarName}\".",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "• Keep Cloned Events: Sync stops, but cloned events remain on \"${pair.toCalendarName}\".",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "• Delete & Clear Events: Automatically purges all events created by this pair from \"${pair.toCalendarName}\".",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "• Delete & Clear: Automatically deletes all events created by this pair from \"${pair.toCalendarName}\".",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDeleteAndClearEvents,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Delete & Clear Events")
-            }
-        },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-                FilledTonalButton(onClick = onDeleteKeepEvents) {
-                    Text("Keep Events")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    FilledTonalButton(
+                        onClick = onDeleteKeepEvents,
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text("Keep Events")
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Button(
+                        onClick = onDeleteAndClearEvents,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Rose500)
+                    ) {
+                        Text("Delete & Clear", color = Color.White)
+                    }
                 }
             }
         }
-    )
+    }
 }
-

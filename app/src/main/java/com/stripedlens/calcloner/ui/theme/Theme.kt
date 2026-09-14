@@ -1,53 +1,92 @@
 package com.stripedlens.calcloner.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.stripedlens.calcloner.ThemeMode
 
+// Titanium Mint Color Tokens
+object TitaniumMint {
+    val Mint400 = Color(0xFF34D399)
+    val Mint500 = Color(0xFF10B981)
+    val Mint600 = Color(0xFF059669)
+    val Amber400 = Color(0xFFFBBF24)
+    val Amber500 = Color(0xFFF9BD22)
+    val Rose400 = Color(0xFFFB7185)
+    val Rose500 = Color(0xFFF43F5E)
+    val CarbonOnyx = Color(0xFF121214)
+    val SurfaceLow = Color(0xFF18181B)
+    val SurfaceMid = Color(0xFF1F1F23)
+    val SurfaceHigh = Color(0xFF27272A)
+    val BorderDark = Color(0xFF2E2E34)
+}
+
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF38BDF8),          // Sky 400
-    onPrimary = Color(0xFF082F49),        // Sky 950
-    primaryContainer = Color(0xFF0369A1), // Sky 700
-    onPrimaryContainer = Color(0xFFE0F2FE),
-    secondary = Color(0xFF2DD4BF),        // Teal 400
-    onSecondary = Color(0xFF042F2E),
-    secondaryContainer = Color(0xFF115E59),
-    onSecondaryContainer = Color(0xFFCCFBF1),
-    background = Color(0xFF0F172A),       // Slate 900
-    onBackground = Color(0xFFF8FAFC),
-    surface = Color(0xFF1E293B),          // Slate 800
-    onSurface = Color(0xFFF8FAFC),
-    surfaceVariant = Color(0xFF334155),   // Slate 700
-    onSurfaceVariant = Color(0xFFCBD5E1),
-    error = Color(0xFFF87171),            // Red 400
-    onError = Color(0xFF450A0A),
-    errorContainer = Color(0xFF7F1D1D),
-    onErrorContainer = Color(0xFFFEE2E2)
+    primary = TitaniumMint.Mint400,
+    onPrimary = Color(0xFF003824),
+    primaryContainer = TitaniumMint.Mint500,
+    onPrimaryContainer = Color(0xFF022C1D),
+    secondary = Color(0xFF4EDEA3),
+    onSecondary = Color(0xFF003825),
+    secondaryContainer = TitaniumMint.Mint600,
+    onSecondaryContainer = Color(0xFFE6FDF3),
+    tertiary = TitaniumMint.Amber500,
+    onTertiary = Color(0xFF402D00),
+    tertiaryContainer = Color(0xFFCE9A00),
+    onTertiaryContainer = Color(0xFF4A3500),
+    background = TitaniumMint.CarbonOnyx,
+    onBackground = Color(0xFFF4F4F5),
+    surface = TitaniumMint.SurfaceLow,
+    onSurface = Color(0xFFF4F4F5),
+    surfaceVariant = TitaniumMint.SurfaceHigh,
+    onSurfaceVariant = Color(0xFFA1A1AA),
+    outline = Color(0xFF71717A),
+    outlineVariant = TitaniumMint.BorderDark,
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF0284C7),          // Sky 600
+    primary = Color(0xFF006948),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0F2FE), // Sky 100
-    onPrimaryContainer = Color(0xFF0369A1),
-    secondary = Color(0xFF0D9488),        // Teal 600
+    primaryContainer = Color(0xFF00855D),
+    onPrimaryContainer = Color(0xFFF5FFF7),
+    secondary = Color(0xFF006C49),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFCCFBF1), // Teal 100
-    onSecondaryContainer = Color(0xFF115E59),
-    background = Color(0xFFF8FAFC),       // Slate 50
-    onBackground = Color(0xFF0F172A),
+    secondaryContainer = Color(0xFF6CF8BB),
+    onSecondaryContainer = Color(0xFF00714D),
+    tertiary = Color(0xFF545C72),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF6C748B),
+    onTertiaryContainer = Color(0xFFFEFCFF),
+    background = Color(0xFFF7F9FB),
+    onBackground = Color(0xFF191C1E),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF0F172A),
-    surfaceVariant = Color(0xFFF1F5F9),   // Slate 100
-    onSurfaceVariant = Color(0xFF475569),
-    error = Color(0xFFDC2626),            // Red 600
+    onSurface = Color(0xFF191C1E),
+    surfaceVariant = Color(0xFFECEEF0),
+    onSurfaceVariant = Color(0xFF3D4A42),
+    outline = Color(0xFF6D7A72),
+    outlineVariant = Color(0xFFBCCAC0),
+    error = Color(0xFFBA1A1A),
     onError = Color.White,
-    errorContainer = Color(0xFFFEE2E2),
-    onErrorContainer = Color(0xFF991B1B)
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF93000A)
+)
+
+val TitaniumMintShapes = Shapes(
+    extraSmall = RoundedCornerShape(2.dp),
+    small = RoundedCornerShape(4.dp),
+    medium = RoundedCornerShape(8.dp),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(16.dp)
 )
 
 @Composable
@@ -65,6 +104,7 @@ fun CalClonerTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        shapes = TitaniumMintShapes,
         content = content
     )
 }

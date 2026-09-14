@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -22,6 +24,10 @@ enum class ThemeMode(val code: Int) {
 class SettingsRepository(private val context: Context) {
 
     companion object {
+        private val pairsMutex = Mutex()
+        private const val PREFS_NAME = "calcloner_shared_prefs"
+        private const val KEY_LAST_FINGERPRINT = "last_known_fingerprint"
+
         val FROM_CALENDAR_ID = longPreferencesKey("from_calendar_id")
         val FROM_CALENDAR_NAME = stringPreferencesKey("from_calendar_name")
         val TO_CALENDAR_ID = longPreferencesKey("to_calendar_id")
@@ -50,19 +56,20 @@ class SettingsRepository(private val context: Context) {
             val legacyToId = prefs[TO_CALENDAR_ID]
             val legacyToName = prefs[TO_CALENDAR_NAME] ?: "Clone Calendar"
             if (legacyFromId != null && legacyToId != null) {
-                val legacyPast = prefs[SYNC_DAYS_PAST]
-                val legacyFuture = prefs[SYNC_DAYS_FUTURE]
+                val legacyPast = prefs[SYNC_DAYS_PAST] ?: 30
+                val legacyFuture = prefs[SYNC_DAYS_FUTURE] ?: 30
                 val legacyTime = prefs[LAST_SYNC_TIME]
                 val legacyStatus = prefs[LAST_SYNC_STATUS]
                 listOf(
-                    SyncPair(
+                    SyncPair.createNew(
                         fromCalendarId = legacyFromId,
                         fromCalendarName = legacyFromName,
                         toCalendarId = legacyToId,
                         toCalendarName = legacyToName,
-                        daysPast = if (legacyPast == 30) null else legacyPast,
-                        daysFuture = if (legacyFuture == 30) null else legacyFuture,
-                        isEnabled = true,
+                        daysPast = legacyPast,
+                        daysFuture = legacyFuture,
+                        isEnabled = true
+                    ).copy(
                         lastSyncTime = legacyTime,
                         lastSyncStatus = legacyStatus
                     )
@@ -73,21 +80,7 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    val fromCalendarIdFlow: Flow<Long?> = context.dataStore.data.map { it[FROM_CALENDAR_ID] }
-    val fromCalendarNameFlow: Flow<String?> = context.dataStore.data.map { it[FROM_CALENDAR_NAME] }
-    val toCalendarIdFlow: Flow<Long?> = context.dataStore.data.map { it[TO_CALENDAR_ID] }
-    val toCalendarNameFlow: Flow<String?> = context.dataStore.data.map { it[TO_CALENDAR_NAME] }
     val syncIntervalFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_INTERVAL] ?: 0 } // Default Instant (0)
-    val customDaysPastFlow: Flow<Int?> = context.dataStore.data.map {
-        val v = it[SYNC_DAYS_PAST]
-        if (v == null || v == 30) null else v
-    }
-    val customDaysFutureFlow: Flow<Int?> = context.dataStore.data.map {
-        val v = it[SYNC_DAYS_FUTURE]
-        if (v == null || v == 30) null else v
-    }
-    val syncDaysPastFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_DAYS_PAST] ?: 30 } // Default 30 days back
-    val syncDaysFutureFlow: Flow<Int> = context.dataStore.data.map { it[SYNC_DAYS_FUTURE] ?: 30 } // Default 30 days forward
     val lastSyncTimeFlow: Flow<Long?> = context.dataStore.data.map { it[LAST_SYNC_TIME] }
     val lastSyncStatusFlow: Flow<String?> = context.dataStore.data.map { it[LAST_SYNC_STATUS] }
 
@@ -103,18 +96,14 @@ class SettingsRepository(private val context: Context) {
         it[SYNC_ON_LOW_BATTERY] ?: false
     }
 
-    suspend fun saveFromCalendar(id: Long?, name: String?) {
-        context.dataStore.edit { preferences ->
-            if (id != null) preferences[FROM_CALENDAR_ID] = id else preferences.remove(FROM_CALENDAR_ID)
-            if (name != null) preferences[FROM_CALENDAR_NAME] = name else preferences.remove(FROM_CALENDAR_NAME)
-        }
+    fun getSavedFingerprint(): String {
+        val sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sp.getString(KEY_LAST_FINGERPRINT, "") ?: ""
     }
 
-    suspend fun saveToCalendar(id: Long?, name: String?) {
-        context.dataStore.edit { preferences ->
-            if (id != null) preferences[TO_CALENDAR_ID] = id else preferences.remove(TO_CALENDAR_ID)
-            if (name != null) preferences[TO_CALENDAR_NAME] = name else preferences.remove(TO_CALENDAR_NAME)
-        }
+    fun saveFingerprint(fingerprint: String) {
+        val sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sp.edit().putString(KEY_LAST_FINGERPRINT, fingerprint).apply()
     }
 
     suspend fun saveSyncInterval(interval: Int) {
@@ -126,26 +115,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveSyncOnLowBattery(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SYNC_ON_LOW_BATTERY] = enabled
-        }
-    }
-
-    suspend fun saveSyncDaysPast(days: Int?) {
-        context.dataStore.edit { preferences ->
-            if (days != null && days != 30) {
-                preferences[SYNC_DAYS_PAST] = days
-            } else {
-                preferences.remove(SYNC_DAYS_PAST)
-            }
-        }
-    }
-
-    suspend fun saveSyncDaysFuture(days: Int?) {
-        context.dataStore.edit { preferences ->
-            if (days != null && days != 30) {
-                preferences[SYNC_DAYS_FUTURE] = days
-            } else {
-                preferences.remove(SYNC_DAYS_FUTURE)
-            }
         }
     }
 
@@ -161,53 +130,75 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun saveSyncPairs(pairs: List<SyncPair>) {
-        context.dataStore.edit { preferences ->
-            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(pairs)
+        pairsMutex.withLock {
+            context.dataStore.edit { preferences ->
+                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(pairs)
+            }
         }
     }
 
     suspend fun upsertSyncPair(pair: SyncPair) {
-        context.dataStore.edit { preferences ->
-            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-            val index = currentPairs.indexOfFirst { it.id == pair.id }
-            if (index >= 0) {
-                currentPairs[index] = pair
-            } else {
-                currentPairs.add(pair)
+        pairsMutex.withLock {
+            context.dataStore.edit { preferences ->
+                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+                val index = currentPairs.indexOfFirst { it.id == pair.id }
+                if (index >= 0) {
+                    currentPairs[index] = pair
+                } else {
+                    currentPairs.add(pair)
+                }
+                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
             }
-            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
         }
     }
 
     suspend fun deleteSyncPair(pairId: String) {
-        context.dataStore.edit { preferences ->
-            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-            currentPairs.removeAll { it.id == pairId }
-            preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
-        }
-    }
-
-    suspend fun togglePairEnabled(pairId: String, isEnabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-            val index = currentPairs.indexOfFirst { it.id == pairId }
-            if (index >= 0) {
-                currentPairs[index] = currentPairs[index].copy(isEnabled = isEnabled)
+        pairsMutex.withLock {
+            context.dataStore.edit { preferences ->
+                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+                currentPairs.removeAll { it.id == pairId }
                 preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
             }
         }
     }
 
-    suspend fun updatePairSyncStatus(pairId: String, timestamp: Long, status: String) {
-        context.dataStore.edit { preferences ->
-            val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-            val index = currentPairs.indexOfFirst { it.id == pairId }
-            if (index >= 0) {
-                currentPairs[index] = currentPairs[index].copy(
-                    lastSyncTime = timestamp,
-                    lastSyncStatus = status
-                )
-                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+    suspend fun togglePairEnabled(pairId: String, isEnabled: Boolean) {
+        pairsMutex.withLock {
+            context.dataStore.edit { preferences ->
+                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+                val index = currentPairs.indexOfFirst { it.id == pairId }
+                if (index >= 0) {
+                    currentPairs[index] = currentPairs[index].copy(isEnabled = isEnabled)
+                    preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+                }
+            }
+        }
+    }
+
+    suspend fun updatePairSyncStatus(
+        pairId: String,
+        timestamp: Long,
+        status: String,
+        insertedCount: Int = 0,
+        updatedCount: Int = 0,
+        deletedCount: Int = 0,
+        durationMs: Long? = null
+    ) {
+        pairsMutex.withLock {
+            context.dataStore.edit { preferences ->
+                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+                val index = currentPairs.indexOfFirst { it.id == pairId }
+                if (index >= 0) {
+                    currentPairs[index] = currentPairs[index].copy(
+                        lastSyncTime = timestamp,
+                        lastSyncStatus = status,
+                        lastInsertedCount = insertedCount,
+                        lastUpdatedCount = updatedCount,
+                        lastDeletedCount = deletedCount,
+                        lastDurationMs = durationMs
+                    )
+                    preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+                }
             }
         }
     }

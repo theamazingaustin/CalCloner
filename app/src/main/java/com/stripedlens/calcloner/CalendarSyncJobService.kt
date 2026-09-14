@@ -27,9 +27,6 @@ class CalendarSyncJobService : JobService() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
-        @Volatile
-        private var lastKnownFingerprint: String = ""
-
         fun reschedule(context: Context, syncOnLowBattery: Boolean = false) {
             val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as? JobScheduler ?: return
             val componentName = ComponentName(context, CalendarSyncJobService::class.java)
@@ -154,7 +151,21 @@ class CalendarSyncJobService : JobService() {
                 // Sync ONLY the pairs whose source calendar actually changed
                 val affectedPairs = pairs.filter { it.fromCalendarId in affectedSourceCalendarIds }
                 if (affectedPairs.isNotEmpty()) {
-                    CalendarSyncEngine.syncAllPairs(applicationContext, affectedPairs)
+                    val results = CalendarSyncEngine.syncAllPairs(applicationContext, affectedPairs)
+                    val totalInserted = results.values.sumOf { it.insertedCount }
+                    val totalUpdated = results.values.sumOf { it.updatedCount }
+                    val totalDeleted = results.values.sumOf { it.deletedCount }
+                    val statusMsg = when {
+                        totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${affectedPairs.size} pair(s)."
+                        else -> {
+                            val parts = mutableListOf<String>()
+                            if (totalInserted > 0) parts.add("$totalInserted added")
+                            if (totalUpdated > 0) parts.add("$totalUpdated updated")
+                            if (totalDeleted > 0) parts.add("$totalDeleted removed")
+                            "Auto-synced (${affectedPairs.size} pairs): ${parts.joinToString(", ")}."
+                        }
+                    }
+                    repo.saveLastSync(System.currentTimeMillis(), statusMsg)
                 }
                 return
             }
@@ -162,11 +173,12 @@ class CalendarSyncJobService : JobService() {
 
         // SAFEGUARD 4: Micro-Diff Fallback for generic table-level triggers
         val currentFingerprint = CalendarSyncEngine.getSourceCalendarsFingerprint(applicationContext, sourceCalendarIds)
-        if (currentFingerprint.isNotEmpty() && currentFingerprint == lastKnownFingerprint) {
+        val lastSavedFingerprint = repo.getSavedFingerprint()
+        if (currentFingerprint.isNotEmpty() && currentFingerprint == lastSavedFingerprint) {
             // Source calendars did not change; exit without full scan
             return
         }
-        lastKnownFingerprint = currentFingerprint
+        repo.saveFingerprint(currentFingerprint)
 
         if (isRecentSelfWrite) {
             // Recent self-write and generic trigger -> suppress echo
@@ -174,6 +186,20 @@ class CalendarSyncJobService : JobService() {
         }
 
         // Run sync on enabled pairs
-        CalendarSyncEngine.syncAllPairs(applicationContext, pairs)
+        val results = CalendarSyncEngine.syncAllPairs(applicationContext, pairs)
+        val totalInserted = results.values.sumOf { it.insertedCount }
+        val totalUpdated = results.values.sumOf { it.updatedCount }
+        val totalDeleted = results.values.sumOf { it.deletedCount }
+        val statusMsg = when {
+            totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${pairs.size} pair(s)."
+            else -> {
+                val parts = mutableListOf<String>()
+                if (totalInserted > 0) parts.add("$totalInserted added")
+                if (totalUpdated > 0) parts.add("$totalUpdated updated")
+                if (totalDeleted > 0) parts.add("$totalDeleted removed")
+                "Auto-synced (${pairs.size} pairs): ${parts.joinToString(", ")}."
+            }
+        }
+        repo.saveLastSync(System.currentTimeMillis(), statusMsg)
     }
 }

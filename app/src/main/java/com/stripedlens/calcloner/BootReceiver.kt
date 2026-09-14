@@ -19,8 +19,15 @@ class BootReceiver : BroadcastReceiver() {
                     val interval = repo.syncIntervalFlow.first()
                     val pairs = repo.syncPairsFlow.first().filter { it.isEnabled }
                     val syncOnLow = repo.syncOnLowBatteryFlow.first()
-                    if (pairs.isNotEmpty() && interval == 0) {
-                        CalendarSyncScheduler.scheduleReactiveSync(context, syncOnLow)
+                    if (pairs.isNotEmpty()) {
+                        if (interval == 0) {
+                            CalendarSyncScheduler.scheduleReactiveSync(context, syncOnLow)
+                        } else {
+                            CalendarSyncScheduler.scheduleSync(context, interval, syncOnLow)
+                        }
+                    } else {
+                        CalendarSyncScheduler.cancelReactiveSync(context)
+                        CalendarSyncScheduler.cancelSync(context)
                     }
                 } catch (_: Exception) {
                     // Ignore boot setup failures

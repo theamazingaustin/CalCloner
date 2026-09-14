@@ -129,10 +129,14 @@ object CalendarSyncEngine {
         val originalId: Long?,
         val originalSyncId: String?,
         val originalInstanceTime: Long?,
-        val hasRrule: Boolean
+        val hasRrule: Boolean,
+        val customAppUri: String? = null
     )
 
     private fun isEventContentChanged(existing: ClonedEventMeta, newValues: ContentValues): Boolean {
+        val newUri = newValues.getAsString(CalendarContract.Events.CUSTOM_APP_URI)
+        if (!newUri.isNullOrEmpty() && newUri != existing.customAppUri) return true
+
         val newTitle = newValues.getAsString(CalendarContract.Events.TITLE) ?: ""
         if (newTitle != (existing.title ?: "")) return true
 
@@ -408,24 +412,40 @@ object CalendarSyncEngine {
         uriPrefix: String,
         defaultTimeZone: String,
         targetParentId: Long?,
-        pairId: String? = null
+        pairId: String? = null,
+        syncTitle: Boolean = true,
+        customTitle: String? = null,
+        syncDescription: Boolean = true,
+        syncLocation: Boolean = true,
+        syncAvailability: Boolean = true,
+        syncStatus: Boolean = true
     ): ContentValues {
         return ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, toCalendarId)
-            put(CalendarContract.Events.TITLE, event.title ?: "")
-            put(CalendarContract.Events.EVENT_LOCATION, event.location ?: "")
+            val titleToUse = if (syncTitle) {
+                event.title ?: ""
+            } else {
+                val sanitized = customTitle?.trim()?.replace(Regex("[\\p{Cntrl}&&[^\r\n\t]]"), "")
+                if (sanitized.isNullOrEmpty()) "-" else sanitized.take(100)
+            }
+            put(CalendarContract.Events.TITLE, titleToUse)
+            put(CalendarContract.Events.EVENT_LOCATION, if (syncLocation) (event.location ?: "") else "")
 
             // Description Tracking Tag: Append [CalCloner-ID: <pairId>:<id>] for cross-cloud persistence
             val trackingTag = if (pairId != null) "[CalCloner-ID: ${pairId}:${event.id}]" else "[CalCloner-ID: ${event.id}]"
-            val fullDescription = when {
-                event.description.isNullOrEmpty() -> trackingTag
-                event.description.contains("[CalCloner-ID:") -> {
-                    event.description.replace(Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
+            val fullDescription = if (syncDescription) {
+                when {
+                    event.description.isNullOrEmpty() -> trackingTag
+                    event.description.contains("[CalCloner-ID:") -> {
+                        event.description.replace(Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
+                    }
+                    event.description.contains("[CalClone-ID:") -> {
+                        event.description.replace(Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
+                    }
+                    else -> "${event.description}\n\n$trackingTag"
                 }
-                event.description.contains("[CalClone-ID:") -> {
-                    event.description.replace(Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
-                }
-                else -> "${event.description}\n\n$trackingTag"
+            } else {
+                trackingTag
             }
             put(CalendarContract.Events.DESCRIPTION, fullDescription)
 
@@ -495,9 +515,9 @@ object CalendarSyncEngine {
                 put(CalendarContract.Events.EXDATE, event.exdate)
             }
 
-            val eventStatus = event.status ?: CalendarContract.Events.STATUS_CONFIRMED
+            val eventStatus = if (syncStatus) (event.status ?: CalendarContract.Events.STATUS_CONFIRMED) else CalendarContract.Events.STATUS_CONFIRMED
             put(CalendarContract.Events.STATUS, eventStatus)
-            val eventAvailability = event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY
+            val eventAvailability = if (syncAvailability) (event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY) else CalendarContract.Events.AVAILABILITY_BUSY
             put(CalendarContract.Events.AVAILABILITY, eventAvailability)
             put(CalendarContract.Events.HAS_ALARM, if (event.reminders.isNotEmpty()) 1 else 0)
             put(CalendarContract.Events.CUSTOM_APP_PACKAGE, context.packageName)
@@ -531,8 +551,17 @@ object CalendarSyncEngine {
         daysPast: Int = 30,
         daysFuture: Int = 30,
         pairId: String? = null,
+        syncTitle: Boolean = true,
+        customTitle: String? = null,
+        syncDescription: Boolean = true,
+        syncLocation: Boolean = true,
+        syncReminders: Boolean = true,
+        syncAvailability: Boolean = true,
+        syncStatus: Boolean = true,
+        activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
     ): SyncResult = syncMutex.withLock {
+        val startTime = System.currentTimeMillis()
         require(fromCalendarId != toCalendarId) {
             "CRITICAL SAFETY VIOLATION: Source calendar ($fromCalendarId) and Target calendar ($toCalendarId) cannot be the same!"
         }
@@ -572,6 +601,7 @@ object CalendarSyncEngine {
         // Find existing events in TARGET calendar using CUSTOM_APP_URI or [CalClone-ID] tag or title/time signature
         val existingTargetEvents = mutableMapOf<Long, ClonedEventMeta>()
         val existingTargetBySignature = mutableMapOf<String, ClonedEventMeta>()
+        val redundantDuplicateIdsToDelete = mutableListOf<Long>()
         val sourceIdToTargetIdMap = mutableMapOf<Long, Long>()
         val sourceSyncIdToTargetIdMap = mutableMapOf<String, Long>()
 
@@ -664,7 +694,8 @@ object CalendarSyncEngine {
                     originalId = origId,
                     originalSyncId = origSync,
                     originalInstanceTime = origInst,
-                    hasRrule = hasRrule
+                    hasRrule = hasRrule,
+                    customAppUri = customUri
                 )
 
                 var sourceId: Long? = null
@@ -706,17 +737,62 @@ object CalendarSyncEngine {
                     }
                 }
 
-                if (sourceId != null) {
-                    // Multi-pair isolation: If pairId is specified and matchedPairId is from a different pair, skip it
-                    if (pairId != null && matchedPairId != null && matchedPairId != pairId) {
-                        continue
-                    }
-                    existingTargetEvents[sourceId] = meta
-                    sourceIdToTargetIdMap[sourceId] = targetId
+                // Multi-Pair Isolation: If matchedPairId belongs to another ACTIVE sync pair, strictly protect & skip it!
+                if (matchedPairId != null && activePairIds.contains(matchedPairId) && (pairId == null || matchedPairId != pairId)) {
                     continue
                 }
 
-                existingTargetBySignature["$title|$start"] = meta
+                val sourceEventIds = sourceEvents.map { it.id }.toSet()
+
+                if (sourceId != null) {
+                    // Check if this sourceId belongs to this sync pair's source calendar
+                    if (sourceEventIds.contains(sourceId)) {
+                        if (existingTargetEvents.containsKey(sourceId)) {
+                            // Redundant duplicate clone of the same source event found!
+                            redundantDuplicateIdsToDelete.add(targetId)
+                        } else {
+                            existingTargetEvents[sourceId] = meta
+                            sourceIdToTargetIdMap[sourceId] = targetId
+                        }
+                        continue
+                    } else if (matchedPairId == pairId) {
+                        // Belongs to this pair, but source event may have been deleted outside sync window
+                        existingTargetEvents[sourceId] = meta
+                        sourceIdToTargetIdMap[sourceId] = targetId
+                        continue
+                    }
+                }
+
+                // Signature matching: ONLY for events marked with CalCloner tags (never hijack organic events!)
+                val isCalClonerEvent = (customUri != null && customUri.startsWith(uriPrefix)) ||
+                        (desc != null && (desc.contains("[CalCloner-ID:") || desc.contains("[CalClone-ID:")))
+                if (isCalClonerEvent) {
+                    val sigKey = "$title|$start"
+                    if (existingTargetBySignature.containsKey(sigKey)) {
+                        redundantDuplicateIdsToDelete.add(targetId)
+                    } else {
+                        existingTargetBySignature[sigKey] = meta
+                    }
+                }
+            }
+        }
+
+        // Clean up any redundant duplicate clones found during target scan
+        if (redundantDuplicateIdsToDelete.isNotEmpty()) {
+            val deleteOps = ArrayList<ContentProviderOperation>()
+            for (dupId in redundantDuplicateIdsToDelete) {
+                val delUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, dupId)
+                deleteOps.add(ContentProviderOperation.newDelete(delUri).build())
+            }
+            try {
+                context.contentResolver.applyBatch(CalendarContract.AUTHORITY, deleteOps)
+            } catch (_: Exception) {
+                for (dupId in redundantDuplicateIdsToDelete) {
+                    try {
+                        val delUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, dupId)
+                        context.contentResolver.delete(delUri, null, null)
+                    } catch (_: Exception) {}
+                }
             }
         }
 
@@ -732,7 +808,11 @@ object CalendarSyncEngine {
         }
 
         fun syncSingleEvent(event: SyncEvent, targetParentId: Long?) {
-            val values = buildEventValues(context, event, toCalendarId, uriPrefix, defaultTimeZone, targetParentId, pairId)
+            val values = buildEventValues(
+                context, event, toCalendarId, uriPrefix, defaultTimeZone, targetParentId, pairId,
+                syncTitle, customTitle,
+                syncDescription, syncLocation, syncAvailability, syncStatus
+            )
             val sigKey = "${event.title ?: ""}|${event.dtStart}"
             val existingMeta = existingTargetEvents[event.id] ?: existingTargetBySignature[sigKey]
 
@@ -761,7 +841,11 @@ object CalendarSyncEngine {
                 if (!event.syncId.isNullOrEmpty()) {
                     sourceSyncIdToTargetIdMap[event.syncId] = targetId
                 }
-                syncReminders(context, targetId, event.reminders)
+                if (syncReminders) {
+                    syncReminders(context, targetId, event.reminders)
+                } else {
+                    syncReminders(context, targetId, emptyList())
+                }
             }
         }
 
@@ -843,7 +927,7 @@ object CalendarSyncEngine {
                 }
                 try {
                     val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
-                    deletedCount += results.size
+                    deletedCount += results.sumOf { (it.count ?: 0).toInt() }
                 } catch (_: Exception) {
                     // Fallback to individual deletes if provider restricts batch
                     for (id in chunk) {
@@ -870,16 +954,13 @@ object CalendarSyncEngine {
             context.sendBroadcast(android.content.Intent("com.google.android.calendar.SYNC_TRIGGER"))
         } catch (_: Exception) {}
 
-        // Request immediate aggressive sync (bypasses throttling, forces immediate cloud push)
+        // Request standard expedited sync for routine sync passes
         if (!targetAccountName.isNullOrEmpty() && !targetAccountType.isNullOrEmpty()) {
             try {
                 val account = Account(targetAccountName, targetAccountType)
                 val syncBundle = Bundle().apply {
                     putBoolean(android.content.ContentResolver.SYNC_EXTRAS_MANUAL, true)
                     putBoolean(android.content.ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
-                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_IGNORE_SETTINGS, true)
-                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_IGNORE_BACKOFF, true)
-                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_OVERRIDE_TOO_MANY_DELETIONS, true)
                     putBoolean(android.content.ContentResolver.SYNC_EXTRAS_UPLOAD, true)
                 }
                 android.content.ContentResolver.requestSync(account, CalendarContract.AUTHORITY, syncBundle)
@@ -906,11 +987,13 @@ object CalendarSyncEngine {
 
         onProgress?.invoke(total, total, statusMsg)
 
+        val durationMs = System.currentTimeMillis() - startTime
         SyncResult(
             insertedCount = insertedCount,
             updatedCount = updatedCount,
             totalSourceEvents = total,
-            deletedCount = deletedCount
+            deletedCount = deletedCount,
+            durationMs = durationMs
         )
     }
 
@@ -926,6 +1009,7 @@ object CalendarSyncEngine {
         toCalendarId: Long,
         fromCalendarId: Long?,
         pairId: String? = null,
+        activePairIds: Set<String> = emptySet(),
         onProgress: ((message: String) -> Unit)? = null
     ): Int = syncMutex.withLock {
         if (fromCalendarId != null) {
@@ -952,7 +1036,7 @@ object CalendarSyncEngine {
             }
         }
 
-        // Query active events in target calendar (filtered by pairId if specified)
+        // Query active events in target calendar (strictly filter only events belonging to this pair)
         val eventIds = mutableListOf<Long>()
         val queryCursor = context.contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
@@ -961,25 +1045,53 @@ object CalendarSyncEngine {
             arrayOf(toCalendarId.toString()),
             null
         )
-        val pairUriPrefix = if (pairId != null) "calcloner://event/$pairId/" else null
+        val uriPrefix = "calcloner://event/"
+        val pairUriPrefix = if (pairId != null) "${uriPrefix}${pairId}/" else null
         val pairTagPrefix = if (pairId != null) "[CalCloner-ID: $pairId:" else null
+
         queryCursor?.use {
             val idCol = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
             val uriCol = it.getColumnIndex(CalendarContract.Events.CUSTOM_APP_URI)
             val descCol = it.getColumnIndex(CalendarContract.Events.DESCRIPTION)
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
-                if (pairId == null) {
-                    eventIds.add(id)
-                } else {
-                    val customUri = if (uriCol != -1) it.getString(uriCol) else null
-                    val desc = if (descCol != -1) it.getString(descCol) else null
-                    val isPairEvent = (customUri != null && customUri.startsWith(pairUriPrefix!!)) ||
-                            (desc != null && desc.contains(pairTagPrefix!!)) ||
-                            (customUri != null && customUri.startsWith("calcloner://event/") && !customUri.substringAfter("calcloner://event/").contains("/"))
-                    if (isPairEvent) {
+                val customUri = if (uriCol != -1) it.getString(uriCol) else null
+                val desc = if (descCol != -1) it.getString(descCol) else null
+
+                // Extract matchedPairId if present
+                var matchedPairId: String? = null
+                if (customUri != null && customUri.startsWith(uriPrefix)) {
+                    val remainder = customUri.removePrefix(uriPrefix)
+                    if (remainder.contains("/")) {
+                        matchedPairId = remainder.substringBefore("/")
+                    }
+                }
+                if (matchedPairId == null && desc != null) {
+                    val tagMatch = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""").find(desc)
+                    matchedPairId = tagMatch?.groupValues?.getOrNull(1)?.ifEmpty { null }
+                }
+
+                // If event belongs to another active pair, DO NOT DELETE!
+                if (matchedPairId != null && activePairIds.contains(matchedPairId) && (pairId == null || matchedPairId != pairId)) {
+                    continue
+                }
+
+                // Strictly ignore organic events (no customAppUri and no CalCloner tag)
+                val isClonedEvent = (customUri != null && customUri.startsWith(uriPrefix)) ||
+                        (desc != null && (desc.contains("[CalCloner-ID:") || desc.contains("[CalClone-ID:")))
+                if (!isClonedEvent) {
+                    continue
+                }
+
+                if (pairId != null) {
+                    val isThisPair = (pairUriPrefix != null && customUri != null && customUri.startsWith(pairUriPrefix)) ||
+                            (pairTagPrefix != null && desc != null && desc.contains(pairTagPrefix)) ||
+                            (matchedPairId == null || !activePairIds.contains(matchedPairId))
+                    if (isThisPair) {
                         eventIds.add(id)
                     }
+                } else {
+                    eventIds.add(id)
                 }
             }
         }
@@ -999,7 +1111,7 @@ object CalendarSyncEngine {
             }
             try {
                 val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
-                deletedCount += results.size
+                deletedCount += results.sumOf { (it.count ?: 0).toInt() }
             } catch (e: Exception) {
                 // Fallback to individual deletes if applyBatch encounters provider restriction
                 for (id in chunk) {
@@ -1178,7 +1290,7 @@ object CalendarSyncEngine {
             }
             try {
                 val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
-                deletedCount += results.size
+                deletedCount += results.sumOf { (it.count ?: 0).toInt() }
             } catch (_: Exception) {
                 for (id in chunk) {
                     try {
@@ -1249,27 +1361,47 @@ object CalendarSyncEngine {
         val enabledPairs = pairs.filter { it.isEnabled }
         val repo = SettingsRepository(context)
 
+        val activePairIds = pairs.map { it.id }.toSet()
+
         enabledPairs.forEachIndexed { index, pair ->
+            val startTime = System.currentTimeMillis()
             try {
-                onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, "Syncing: ${pair.fromCalendarName} → ${pair.toCalendarName}...")
+                onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, "Syncing: ${pair.displayName}...")
                 val res = syncEventsToTarget(
                     context = context,
                     fromCalendarId = pair.fromCalendarId,
                     toCalendarId = pair.toCalendarId,
-                    daysPast = pair.daysPast ?: 30,
-                    daysFuture = pair.daysFuture ?: 30,
+                    daysPast = pair.daysPast,
+                    daysFuture = pair.daysFuture,
                     pairId = pair.id,
+                    syncTitle = pair.syncTitle,
+                    customTitle = pair.customTitle,
+                    syncDescription = pair.syncDescription,
+                    syncLocation = pair.syncLocation,
+                    syncReminders = pair.syncReminders,
+                    syncAvailability = pair.syncAvailability,
+                    syncStatus = pair.syncStatus,
+                    activePairIds = activePairIds,
                     onProgress = { _, _, msg ->
                         onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, msg)
                     }
                 )
+                val durationMs = System.currentTimeMillis() - startTime
                 results[pair.id] = res
                 val parts = mutableListOf<String>()
                 if (res.insertedCount > 0) parts.add("${res.insertedCount} added")
                 if (res.updatedCount > 0) parts.add("${res.updatedCount} updated")
                 if (res.deletedCount > 0) parts.add("${res.deletedCount} removed")
                 val statusMsg = if (parts.isEmpty()) "Sync complete: 0 changes." else "Sync complete: ${parts.joinToString(", ")}."
-                repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), statusMsg)
+                repo.updatePairSyncStatus(
+                    pairId = pair.id,
+                    timestamp = System.currentTimeMillis(),
+                    status = statusMsg,
+                    insertedCount = res.insertedCount,
+                    updatedCount = res.updatedCount,
+                    deletedCount = res.deletedCount,
+                    durationMs = durationMs
+                )
                 onPairProgress?.invoke(pair, index + 1, enabledPairs.size, res, statusMsg)
             } catch (e: Exception) {
                 val errorMsg = "Sync failed: ${e.message}"
@@ -1278,6 +1410,72 @@ object CalendarSyncEngine {
             }
         }
         return results
+    }
+
+    /**
+     * Accurately count only cloned events belonging to this pair (or orphaned historical clones from same source).
+     * Never counts organic events or events belonging to other active pairs.
+     */
+    fun getTargetClonedEventCount(
+        context: Context,
+        toCalendarId: Long,
+        pairId: String?,
+        activePairIds: Set<String> = emptySet()
+    ): Int {
+        val queryCursor = context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            arrayOf(CalendarContract.Events._ID, CalendarContract.Events.CUSTOM_APP_URI, CalendarContract.Events.DESCRIPTION),
+            "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0",
+            arrayOf(toCalendarId.toString()),
+            null
+        ) ?: return 0
+        var count = 0
+        val uriPrefix = "calcloner://event/"
+        val pairUriPrefix = if (pairId != null) "${uriPrefix}${pairId}/" else null
+        val pairTagPrefix = if (pairId != null) "[CalCloner-ID: $pairId:" else null
+
+        queryCursor.use {
+            val uriCol = it.getColumnIndex(CalendarContract.Events.CUSTOM_APP_URI)
+            val descCol = it.getColumnIndex(CalendarContract.Events.DESCRIPTION)
+            while (it.moveToNext()) {
+                val customUri = if (uriCol != -1) it.getString(uriCol) else null
+                val desc = if (descCol != -1) it.getString(descCol) else null
+
+                var matchedPairId: String? = null
+                if (customUri != null && customUri.startsWith(uriPrefix)) {
+                    val rem = customUri.removePrefix(uriPrefix)
+                    if (rem.contains("/")) matchedPairId = rem.substringBefore("/")
+                }
+                if (matchedPairId == null && desc != null) {
+                    val tagMatch = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""").find(desc)
+                    matchedPairId = tagMatch?.groupValues?.getOrNull(1)?.ifEmpty { null }
+                }
+
+                // If event belongs to another active pair, do not count as this pair's event
+                if (matchedPairId != null && activePairIds.contains(matchedPairId) && (pairId == null || matchedPairId != pairId)) {
+                    continue
+                }
+
+                // Ignore organic events
+                val isClonedEvent = (customUri != null && customUri.startsWith(uriPrefix)) ||
+                        (desc != null && (desc.contains("[CalCloner-ID:") || desc.contains("[CalClone-ID:")))
+                if (!isClonedEvent) {
+                    continue
+                }
+
+                if (pairId != null) {
+                    val isThisPair = (pairUriPrefix != null && customUri != null && customUri.startsWith(pairUriPrefix)) ||
+                            (pairTagPrefix != null && desc != null && desc.contains(pairTagPrefix)) ||
+                            (matchedPairId == null || !activePairIds.contains(matchedPairId))
+                    if (isThisPair) {
+                        count++
+                    }
+                } else {
+                    count++
+                }
+            }
+        }
+        return count
     }
 
     /**

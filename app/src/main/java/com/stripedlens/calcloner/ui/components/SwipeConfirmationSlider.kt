@@ -33,11 +33,13 @@ import kotlin.math.roundToInt
 @Composable
 fun SwipeToConfirmSlider(
     text: String,
-    lockSeconds: Int,
+    lockSeconds: Int = 0,
     accentColor: Color,
+    enabled: Boolean = true,
+    disabledText: String? = null,
     onConfirmed: () -> Unit
 ) {
-    val isLocked = lockSeconds > 0
+    val isLocked = lockSeconds > 0 || !enabled
     val density = LocalDensity.current
 
     var trackWidthPx by remember { mutableFloatStateOf(0f) }
@@ -72,8 +74,13 @@ fun SwipeToConfirmSlider(
         contentAlignment = Alignment.CenterStart
     ) {
         // Label text in track center
+        val displayText = when {
+            !enabled -> disabledText ?: "Select an option above to unlock"
+            lockSeconds > 0 -> "Locked: Please read ($lockSeconds s)"
+            else -> text
+        }
         Text(
-            text = if (isLocked) "Locked: Please read ($lockSeconds s)" else text,
+            text = displayText,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),

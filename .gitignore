@@ -58,6 +58,9 @@ scratch/
 *.pyc
 __pycache__/
 
+# Design prototypes & mockups
+stitchdesign/
+
 # Graft local cache
 /graft/
 

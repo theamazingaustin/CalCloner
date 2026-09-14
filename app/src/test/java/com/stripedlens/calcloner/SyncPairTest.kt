@@ -27,8 +27,8 @@ class SyncPairTest {
                 fromCalendarName = "Side Project",
                 toCalendarId = 202L,
                 toCalendarName = "Work Mirror",
-                daysPast = null,
-                daysFuture = null,
+                daysPast = 30,
+                daysFuture = 30,
                 isEnabled = false,
                 lastSyncTime = null,
                 lastSyncStatus = null
@@ -57,8 +57,8 @@ class SyncPairTest {
         assertEquals("pair-2", deserialized[1].id)
         assertEquals(303L, deserialized[1].fromCalendarId)
         assertEquals(202L, deserialized[1].toCalendarId)
-        assertNull(deserialized[1].daysPast)
-        assertNull(deserialized[1].daysFuture)
+        assertEquals(30, deserialized[1].daysPast)
+        assertEquals(30, deserialized[1].daysFuture)
         assertFalse(deserialized[1].isEnabled)
         assertNull(deserialized[1].lastSyncTime)
         assertNull(deserialized[1].lastSyncStatus)

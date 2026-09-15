@@ -1,6 +1,6 @@
 package com.stripedlens.calcloner
 
-import com.stripedlens.calcloner.ui.components.checkHasCycle
+import com.stripedlens.calcloner.domain.routing.CycleDetector
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -68,7 +68,7 @@ class SyncPairTest {
     fun testDirectSelfSyncBlocked() {
         val pairs = emptyList<SyncPair>()
         // A -> A is blocked
-        assertTrue(checkHasCycle(pairs, proposedFromId = 1L, proposedToId = 1L))
+        assertTrue(CycleDetector.hasCycle(pairs, proposedFromId = 1L, proposedToId = 1L))
     }
 
     @Test
@@ -84,13 +84,13 @@ class SyncPairTest {
         )
 
         // Adding B -> A creates a cycle: 1 -> 2 -> 1
-        assertTrue(checkHasCycle(existing, proposedFromId = 2L, proposedToId = 1L))
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 2L, proposedToId = 1L))
 
         // Adding A -> C does NOT create a cycle
-        assertFalse(checkHasCycle(existing, proposedFromId = 1L, proposedToId = 3L))
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 1L, proposedToId = 3L))
 
         // Adding C -> D does NOT create a cycle
-        assertFalse(checkHasCycle(existing, proposedFromId = 3L, proposedToId = 4L))
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 3L, proposedToId = 4L))
     }
 
     @Test
@@ -113,13 +113,13 @@ class SyncPairTest {
         )
 
         // Adding C -> A creates a 3-node cycle: A -> B -> C -> A
-        assertTrue(checkHasCycle(existing, proposedFromId = 3L, proposedToId = 1L))
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 3L, proposedToId = 1L))
 
         // Adding C -> D does not create a cycle
-        assertFalse(checkHasCycle(existing, proposedFromId = 3L, proposedToId = 4L))
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 3L, proposedToId = 4L))
 
         // Adding D -> A does not create a cycle (D -> A -> B -> C is a DAG without loop)
-        assertFalse(checkHasCycle(existing, proposedFromId = 4L, proposedToId = 1L))
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 4L, proposedToId = 1L))
     }
 
     @Test
@@ -137,7 +137,7 @@ class SyncPairTest {
             )
         )
 
-        assertFalse(checkHasCycle(existing, proposedFromId = 2L, proposedToId = 3L))
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 2L, proposedToId = 3L))
     }
 
     @Test

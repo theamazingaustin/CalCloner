@@ -3,6 +3,16 @@ package com.stripedlens.calcloner.viewmodel
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.SyncPair
 
+enum class AppTab {
+    SYNC,
+    DELETE
+}
+
+enum class DeleteOperationType {
+    PURGE_CLONED,
+    NUKE_ALL
+}
+
 /**
  * Immutable representation of the complete UI state for [com.stripedlens.calcloner.MainActivity].
  *
@@ -19,6 +29,14 @@ data class MainUiState(
     val hasCalendarPermissions: Boolean = false,
     val isIgnoringBatteryOptimizations: Boolean = true,
 
+    // Navigation Tab
+    val selectedTab: AppTab = AppTab.SYNC,
+
+    // Delete Screen State
+    val selectedDeleteCalendar: CalendarInfo? = null,
+    val deleteOperationType: DeleteOperationType = DeleteOperationType.PURGE_CLONED,
+    val deleteConfirmationText: String = "",
+
     // Operations & Telemetry Progress
     val isOperating: Boolean = false,
     val isSyncing: Boolean = false,
@@ -34,9 +52,6 @@ data class MainUiState(
     val showAddEditSheet: Boolean = false,
     val pairToEdit: SyncPair? = null,
     val pairToDelete: SyncPair? = null,
-    val pairToClear: SyncPair? = null,
-    val pairToNuke: SyncPair? = null,
-    val clearTargetEventCount: Int = 0,
 
     // One-shot User Feedback Toasts/Messages
     val userToastMessage: String? = null

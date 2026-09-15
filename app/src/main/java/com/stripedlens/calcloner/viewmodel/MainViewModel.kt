@@ -8,6 +8,7 @@ import android.os.PowerManager
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.CalendarSyncEngine
 import com.stripedlens.calcloner.CalendarSyncScheduler
 import com.stripedlens.calcloner.SettingsRepository

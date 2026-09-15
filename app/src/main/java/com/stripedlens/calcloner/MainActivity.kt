@@ -15,80 +15,42 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -102,20 +64,16 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
-import com.stripedlens.calcloner.ui.components.BatteryOptimizationStatusCard
-import com.stripedlens.calcloner.ui.components.MasterSyncCard
-import com.stripedlens.calcloner.ui.components.SamsungBatteryBanner
-import com.stripedlens.calcloner.ui.components.SyncPairCard
+import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.TopAppBarOverflowMenu
-import com.stripedlens.calcloner.ui.dialogs.ClearPairClonedEventsDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DisclaimerConsentDialog
-import com.stripedlens.calcloner.ui.dialogs.NukeAllTargetEventsDialog
+import com.stripedlens.calcloner.ui.screens.DeleteScreen
+import com.stripedlens.calcloner.ui.screens.SyncScreen
 import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
-import com.stripedlens.calcloner.util.SystemUtils
+import com.stripedlens.calcloner.viewmodel.AppTab
 import com.stripedlens.calcloner.viewmodel.MainViewModel
-import kotlinx.coroutines.launch
 
 /**
  * Main Activity serving as the primary entry point for CalCloner.
@@ -267,26 +225,6 @@ fun CalendarSyncApp(
         }
     }
 
-    // Motion Animation Transition Specs
-    val infiniteTransition = rememberInfiniteTransition(label = "topBarSpinTransition")
-    val topBarSpinAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "topBarSpinAngle"
-    )
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = uiState.progressFraction,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-        label = "animatedProgress"
-    )
-
-    val scrollState = rememberScrollState()
-
     // ─────────────────────────────────────────────────────────────────────────
     // Dialogs & Modals
     // ─────────────────────────────────────────────────────────────────────────
@@ -310,12 +248,6 @@ fun CalendarSyncApp(
             isSyncing = uiState.isSyncing && (uiState.syncingPairId == currentPairToEdit?.id),
             onDeletePairWithOptions = { pair, deleteClonedEvents ->
                 viewModel.deletePair(pair, deleteClonedEvents)
-            },
-            onClearPairEvents = {
-                currentPairToEdit?.let { viewModel.prepareClearEvents(it) }
-            },
-            onNukeTargetEvents = {
-                currentPairToEdit?.let { viewModel.promptNukeTarget(it) }
             }
         )
     }
@@ -325,31 +257,10 @@ fun CalendarSyncApp(
         DeletePairDialog(
             pair = pair,
             onDismiss = { viewModel.dismissDeletePairDialog() },
-            onDeleteKeepEvents = { viewModel.deletePair(pair, deleteClonedEvents = false) },
-            onDeleteAndClearEvents = { viewModel.deletePair(pair, deleteClonedEvents = true) }
+            onConfirmDelete = { deleteClonedEvents ->
+                viewModel.deletePair(pair, deleteClonedEvents)
+            }
         )
-    }
-
-    // Clear Cloned Events Modal (5-second countdown lock)
-    uiState.pairToClear?.let { pair ->
-        ClearPairClonedEventsDialog(
-            targetCalendarName = pair.toCalendarName,
-            onDismiss = { viewModel.dismissClearEventsDialog() },
-            onConfirmDelete = { viewModel.executeClearEvents(pair) }
-        )
-    }
-
-    // Destructive Nuke All Target Events Modal
-    uiState.pairToNuke?.let { pair ->
-        val targetCal = uiState.availableCalendars.find { it.id == pair.toCalendarId }
-        if (targetCal != null) {
-            NukeAllTargetEventsDialog(
-                calendar = targetCal,
-                onDismiss = { viewModel.dismissNukeTargetDialog() },
-                onConfirmNormalDelete = { viewModel.executeNukeTargetNormal(pair) },
-                onConfirmForceNuke = { viewModel.executeNukeTargetForce(pair) }
-            )
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -359,13 +270,9 @@ fun CalendarSyncApp(
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars,
         topBar = {
-            val isScrolled = scrollState.value > 0
-            val headerElevation by animateDpAsState(if (isScrolled) 6.dp else 0.dp, label = "headerElevation")
-
             Surface(
                 color = MaterialTheme.colorScheme.surface,
-                shadowElevation = headerElevation,
-                border = BorderStroke(1.dp, if (isScrolled) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -440,419 +347,89 @@ fun CalendarSyncApp(
                             )
                         }
                     }
-
-                    // Divider separating app branding from master sync
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-                    )
-
-                    // Master Sync Controls Card
-                    MasterSyncCard(
-                        syncPairs = uiState.syncPairs,
-                        isSyncingAll = uiState.isSyncingAll,
-                        isOperating = uiState.isOperating,
-                        spinAngle = topBarSpinAngle,
-                        onToggleAll = { checked -> viewModel.toggleAllPairs(checked) },
-                        onSyncAll = { viewModel.syncAll() }
-                    )
                 }
             }
+        },
+        bottomBar = {
+            AppBottomNavigationBar(
+                currentTab = uiState.selectedTab,
+                onTabSelected = { viewModel.selectTab(it) }
+            )
         },
         floatingActionButton = {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                shadowElevation = 8.dp,
-                color = Color.Transparent,
-                modifier = Modifier.clickable { viewModel.openAddPairSheet() }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color(0xFF10B981), Color(0xFF34D399))
-                            )
-                        )
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.Center
+            if (uiState.selectedTab == AppTab.SYNC) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    shadowElevation = 8.dp,
+                    color = Color.Transparent,
+                    modifier = Modifier.clickable { viewModel.openAddPairSheet() }
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = Color(0xFF09090B),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "New Sync Pair",
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
-                            color = Color(0xFF09090B)
-                        )
-                    }
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(scrollState)
-                .padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Samsung Deep Sleep Guidance Banner
-                SamsungBatteryBanner(
-                    isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
-                    onOpenBatterySettings = { openBatterySettings() }
-                )
-
-                // Permission Alert Banner
-                AnimatedVisibility(
-                    visible = !uiState.hasCalendarPermissions,
-                    enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-                    exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "Calendar permissions are required to read and sync calendars.",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(onClick = { requestPermissions() }) {
-                                Text("Grant Permissions")
-                            }
-                        }
-                    }
-                }
-
-                // Live Telemetry & Progress Card (Only shown for destructive clearing/nuking actions)
-                AnimatedVisibility(
-                    visible = (uiState.isClearing || uiState.isNuking) && (uiState.isOperating || uiState.operationDone || uiState.progressStatusText.isNotEmpty()),
-                    enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-                    exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
-                ) {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = if (uiState.operationDone) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                            else MaterialTheme.colorScheme.surface
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = when {
-                                        uiState.isSyncing -> "Sync in Progress"
-                                        uiState.isNuking -> "Nuking Calendar"
-                                        uiState.isClearing -> "Clearing Events"
-                                        uiState.operationDone -> "Operation Completed"
-                                        else -> "Status"
-                                    },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (uiState.operationDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFF10B981), Color(0xFF34D399))
                                 )
-
-                                if (uiState.isSyncing && uiState.progressFraction > 0f) {
-                                    Text(
-                                        text = "${(animatedProgress * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            if (uiState.isSyncing && uiState.progressFraction > 0f) {
-                                LinearProgressIndicator(
-                                    progress = animatedProgress.coerceIn(0f, 1f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp)),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            }
-
-                            Text(
-                                text = uiState.progressStatusText,
-                                style = MaterialTheme.typography.bodySmall,
-                                lineHeight = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
-                            if (uiState.operationDone && (uiState.progressStatusText.contains("Cleared") || uiState.progressStatusText.contains("purging") ||
-                                        uiState.progressStatusText.contains("Force") || uiState.progressStatusText.contains("wiped") ||
-                                        uiState.progressStatusText.contains("Pushed deletions"))) {
-                                FilledTonalButton(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = { SystemUtils.openNotificationShade(context) }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Open Notification Shade (Confirm Cloud Deletes)", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Empty State Card
-                if (uiState.syncPairs.isEmpty()) {
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "No Calendar Pairs Yet",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Text(
-                                text = "Add your first pair to begin safe, one-way calendar replication with zero battery drain.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-
-                            Button(onClick = { viewModel.openAddPairSheet() }) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Add First Sync Pair")
-                            }
-                        }
-                    }
-                } else {
-                    // List of Sync Pair Cards
-                    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        uiState.syncPairs.forEach { pair ->
-                            val fromCal = uiState.availableCalendars.find { it.id == pair.fromCalendarId }
-                            val toCal = uiState.availableCalendars.find { it.id == pair.toCalendarId }
-                            val isPairSyncing = uiState.isSyncing && (uiState.isSyncingAll || uiState.syncingPairId == pair.id)
-
-                            SyncPairCard(
-                                pair = pair,
-                                fromCalendar = fromCal,
-                                toCalendar = toCal,
-                                isSyncing = isPairSyncing,
-                                onSyncNow = { viewModel.syncSinglePair(pair) },
-                                onEdit = { viewModel.openEditPairSheet(pair) },
-                                onToggleEnabled = { enabled -> viewModel.togglePairEnabled(pair.id, enabled) },
-                                onClearPairEvents = { viewModel.prepareClearEvents(pair) },
-                                onNukeTarget = { viewModel.promptNukeTarget(pair) },
-                                onDeletePair = { viewModel.promptDeletePair(pair) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // SECTION 2: AUTOMATIC & REACTIVE SYNC SETTINGS
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.BatteryChargingFull,
+                                imageVector = Icons.Default.Add,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color(0xFF09090B),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Sync Engine & Battery",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = "New Sync Pair",
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = Color(0xFF09090B)
                             )
                         }
                     }
-
-                    // Sync Interval Selector
-                    var showIntervalMenu by remember { mutableStateOf(false) }
-                    val intervalOptions = listOf(
-                        -1 to "Never (manual only)",
-                        0 to "Instant",
-                        15 to "Every 15 minutes",
-                        30 to "Every 30 minutes",
-                        60 to "Every 1 hour",
-                        180 to "Every 3 hours",
-                        360 to "Every 6 hours",
-                        720 to "Every 12 hours",
-                        1440 to "Every 24 hours (1x a day)"
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (uiState.selectedTab) {
+                AppTab.SYNC -> {
+                    SyncScreen(
+                        uiState = uiState,
+                        onSyncAll = { viewModel.syncAll() },
+                        onToggleAll = { checked -> viewModel.toggleAllPairs(checked) },
+                        onSyncPair = { pair -> viewModel.syncSinglePair(pair) },
+                        onEditPair = { pair -> viewModel.openEditPairSheet(pair) },
+                        onTogglePairEnabled = { pairId, enabled -> viewModel.togglePairEnabled(pairId, enabled) },
+                        onDeletePair = { pair -> viewModel.promptDeletePair(pair) },
+                        onAddNewPair = { viewModel.openAddPairSheet() },
+                        onSaveSyncInterval = { mins -> viewModel.saveSyncInterval(mins) },
+                        onSaveSyncOnLowBattery = { onLow -> viewModel.saveSyncOnLowBattery(onLow) },
+                        onOpenBatterySettings = { openBatterySettings() },
+                        onRequestPermissions = { requestPermissions() }
                     )
-
-                    val savedInterval = uiState.syncIntervalMinutes
-                    val currentIntervalLabel = intervalOptions.find { it.first == savedInterval }?.second
-                        ?: if (savedInterval > 0) "Every $savedInterval minutes" else "Never (manual only)"
-
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedCard(
-                            onClick = { showIntervalMenu = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Sync Interval",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = currentIntervalLabel,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "Select"
-                                )
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = showIntervalMenu,
-                            onDismissRequest = { showIntervalMenu = false }
-                        ) {
-                            intervalOptions.forEach { (mins, label) ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = label,
-                                            fontWeight = if (mins == savedInterval) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    },
-                                    onClick = {
-                                        showIntervalMenu = false
-                                        viewModel.saveSyncInterval(mins)
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Low Battery / Power Saver Setting
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Sync on Low Battery / Power Saver",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f).padding(end = 12.dp)
-                            )
-                            Switch(
-                                checked = uiState.syncOnLowBattery,
-                                onCheckedChange = { checked ->
-                                    viewModel.saveSyncOnLowBattery(checked)
-                                }
-                            )
-                        }
-                    }
-
-                    // Battery Optimization Status & Guidance
-                    BatteryOptimizationStatusCard(
-                        isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
-                        syncIntervalMinutes = uiState.syncIntervalMinutes,
-                        onOpenBatterySettings = { openBatterySettings() }
+                }
+                AppTab.DELETE -> {
+                    DeleteScreen(
+                        uiState = uiState,
+                        onCalendarSelected = { calendar -> viewModel.selectDeleteCalendar(calendar) },
+                        onOperationTypeSelected = { type -> viewModel.setDeleteOperationType(type) },
+                        onConfirmationTextChanged = { text -> viewModel.setDeleteConfirmationText(text) },
+                        onDeleteConfirmed = { viewModel.executeCalendarDelete() }
                     )
                 }
             }
-
-            // Bottom Spacer to prevent FAB occlusion
-            Spacer(modifier = Modifier.height(84.dp))
         }
     }
 }

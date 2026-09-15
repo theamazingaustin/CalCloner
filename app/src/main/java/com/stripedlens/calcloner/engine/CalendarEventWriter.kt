@@ -30,6 +30,10 @@ import java.util.TimeZone
  */
 object CalendarEventWriter {
 
+    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+    private val CALCLONER_TAG_REPLACE_REGEX = Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
+    private val CALCLONE_TAG_REPLACE_REGEX = Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
+
     internal data class ClonedEventMeta(
         val targetId: Long,
         val dtStart: Long,
@@ -200,10 +204,10 @@ object CalendarEventWriter {
                 when {
                     event.description.isNullOrEmpty() -> trackingTag
                     event.description.contains("[CalCloner-ID:") -> {
-                        event.description.replace(Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
+                        event.description.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
                     }
                     event.description.contains("[CalClone-ID:") -> {
-                        event.description.replace(Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]"""), trackingTag)
+                        event.description.replace(CALCLONE_TAG_REPLACE_REGEX, trackingTag)
                     }
                     else -> "${event.description}\n\n$trackingTag"
                 }
@@ -488,7 +492,7 @@ object CalendarEventWriter {
 
                 // Fallback: Check for [CalCloner-ID: <pairId>:<id>] or [CalCloner-ID: <id>] in DESCRIPTION
                 if (sourceId == null && desc != null) {
-                    val tagMatch = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""").find(desc)
+                    val tagMatch = CALCLONER_TAG_REGEX.find(desc)
                     if (tagMatch != null) {
                         matchedPairId = tagMatch.groupValues.getOrNull(1)?.ifEmpty { null }
                         sourceId = tagMatch.groupValues.getOrNull(2)?.toLongOrNull()

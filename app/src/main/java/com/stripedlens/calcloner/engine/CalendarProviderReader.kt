@@ -14,6 +14,8 @@ import com.stripedlens.calcloner.SyncReminder
  */
 object CalendarProviderReader {
 
+    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+
     /**
      * Query count of active events in a given calendar.
      */
@@ -284,7 +286,7 @@ object CalendarProviderReader {
                     if (rem.contains("/")) matchedPairId = rem.substringBefore("/")
                 }
                 if (matchedPairId == null && desc != null) {
-                    val tagMatch = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""").find(desc)
+                    val tagMatch = CALCLONER_TAG_REGEX.find(desc)
                     matchedPairId = tagMatch?.groupValues?.getOrNull(1)?.ifEmpty { null }
                 }
 

@@ -20,6 +20,8 @@ import kotlinx.coroutines.delay
  */
 object CalendarMaintenance {
 
+    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+
     /**
      * Remove all cloned events strictly from the TARGET (Clone) calendar.
      *
@@ -93,7 +95,7 @@ object CalendarMaintenance {
                     }
                 }
                 if (matchedPairId == null && desc != null) {
-                    val tagMatch = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""").find(desc)
+                    val tagMatch = CALCLONER_TAG_REGEX.find(desc)
                     matchedPairId = tagMatch?.groupValues?.getOrNull(1)?.ifEmpty { null }
                 }
 

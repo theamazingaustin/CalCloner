@@ -15,7 +15,6 @@ import com.stripedlens.calcloner.SettingsRepository
 import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.ThemeMode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

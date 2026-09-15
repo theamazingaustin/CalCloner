@@ -40,8 +40,6 @@ fun SyncPairCard(
     onSyncNow: () -> Unit,
     onEdit: () -> Unit,
     onToggleEnabled: (Boolean) -> Unit,
-    onClearPairEvents: () -> Unit,
-    onNukeTarget: () -> Unit,
     onDeletePair: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -173,6 +171,14 @@ fun SyncPairCard(
                             onClick = {
                                 showMenu = false
                                 onEdit()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete Sync Configuration", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDeletePair()
                             }
                         )
                     }

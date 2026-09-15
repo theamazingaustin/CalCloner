@@ -34,25 +34,14 @@ import com.stripedlens.calcloner.domain.routing.CycleDetector
 import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.components.sheets.DangerZoneSection
-import com.stripedlens.calcloner.ui.components.sheets.DeletePairDialog
-import com.stripedlens.calcloner.ui.components.sheets.DiscardChangesDialog
 import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
 import com.stripedlens.calcloner.ui.dialogs.CalendarInfoPopoverDialog
+import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
+import com.stripedlens.calcloner.ui.dialogs.DiscardChangesDialog
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-/**
- * Directed Acyclic Graph (DAG) cycle detection.
- * Delegates to [CycleDetector.hasCycle] for domain validation.
- */
-fun checkHasCycle(
-    existingPairs: List<SyncPair>,
-    proposedFromId: Long,
-    proposedToId: Long,
-    currentPairId: String? = null
-): Boolean = CycleDetector.hasCycle(existingPairs, proposedFromId, proposedToId, currentPairId)
 
 /**
  * Bottom sheet coordinator for creating or editing a calendar sync pair configuration.
@@ -68,9 +57,7 @@ fun AddEditSyncPairSheet(
     onSaveAndSync: ((SyncPair) -> Unit)? = null,
     onSyncNow: ((SyncPair) -> Unit)? = null,
     isSyncing: Boolean = false,
-    onDeletePairWithOptions: ((SyncPair, Boolean) -> Unit)? = null,
-    onClearPairEvents: (() -> Unit)? = null,
-    onNukeTargetEvents: (() -> Unit)? = null
+    onDeletePairWithOptions: ((SyncPair, Boolean) -> Unit)? = null
 ) {
     var nickname by remember { mutableStateOf(pairToEdit?.nickname ?: "") }
     var isEnabled by remember { mutableStateOf(pairToEdit?.isEnabled ?: true) }
@@ -734,12 +721,10 @@ fun AddEditSyncPairSheet(
                         accentColor = themeAccentColor
                     )
 
-                    // Danger Zone (Delete Configuration & Delete Events)
+                    // Danger Zone (Delete Configuration)
                     DangerZoneSection(
                         pairToEdit = pairToEdit,
-                        onDeleteConfigClick = { showDeletePairDialog = true },
-                        onClearPairEvents = onClearPairEvents,
-                        onNukeTargetEvents = onNukeTargetEvents
+                        onDeleteConfigClick = { showDeletePairDialog = true }
                     )
 
                     Spacer(modifier = Modifier.height(96.dp))

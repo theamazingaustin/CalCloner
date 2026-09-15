@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,22 +48,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Observe persistent storage streams from SettingsRepository
         viewModelScope.launch {
-            repo.syncPairsFlow.collect { pairs ->
-                _uiState.update { it.copy(syncPairs = pairs) }
-                rescheduleBackgroundSyncIfConfigured()
-            }
-        }
-
-        viewModelScope.launch {
-            repo.syncIntervalFlow.collect { interval ->
-                _uiState.update { it.copy(syncIntervalMinutes = interval) }
-                rescheduleBackgroundSyncIfConfigured()
-            }
-        }
-
-        viewModelScope.launch {
-            repo.syncOnLowBatteryFlow.collect { onLow ->
-                _uiState.update { it.copy(syncOnLowBattery = onLow) }
+            combine(
+                repo.syncPairsFlow,
+                repo.syncIntervalFlow,
+                repo.syncOnLowBatteryFlow
+            ) { pairs, interval, onLow ->
+                Triple(pairs, interval, onLow)
+            }.collect { (pairs, interval, onLow) ->
+                _uiState.update {
+                    it.copy(
+                        syncPairs = pairs,
+                        syncIntervalMinutes = interval,
+                        syncOnLowBattery = onLow
+                    )
+                }
                 rescheduleBackgroundSyncIfConfigured()
             }
         }
@@ -434,31 +433,61 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun prepareClearEvents(pair: SyncPair) {
-        viewModelScope.launch {
-            val activeIds = _uiState.value.syncPairs.map { it.id }.toSet()
-            val count = withContext(Dispatchers.IO) {
-                CalendarSyncEngine.getTargetClonedEventCount(context, pair.toCalendarId, pair.id, activeIds)
-            }
-            _uiState.update {
-                it.copy(
-                    pairToClear = pair,
-                    clearTargetEventCount = count
-                )
-            }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Navigation & Tab Management
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fun selectTab(tab: AppTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Delete Screen Actions
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fun selectDeleteCalendar(calendar: CalendarInfo?) {
+        _uiState.update {
+            it.copy(
+                selectedDeleteCalendar = calendar,
+                deleteConfirmationText = ""
+            )
         }
     }
 
-    fun executeClearEvents(pair: SyncPair) {
-        dismissClearEventsDialog()
+    fun setDeleteOperationType(type: DeleteOperationType) {
+        _uiState.update { it.copy(deleteOperationType = type) }
+    }
 
+    fun setDeleteConfirmationText(text: String) {
+        _uiState.update { it.copy(deleteConfirmationText = text) }
+    }
+
+    fun executeCalendarDelete() {
+        val calendar = _uiState.value.selectedDeleteCalendar ?: return
+        val type = _uiState.value.deleteOperationType
+        val requiredText = "delete ${calendar.displayName.trim()}"
+        val userText = _uiState.value.deleteConfirmationText.trim()
+
+        if (!userText.equals(requiredText, ignoreCase = true)) {
+            _uiState.update { it.copy(userToastMessage = "Confirmation text does not match.") }
+            return
+        }
+
+        when (type) {
+            DeleteOperationType.PURGE_CLONED -> executeCalendarPurge(calendar)
+            DeleteOperationType.NUKE_ALL -> executeCalendarNuke(calendar)
+        }
+    }
+
+    private fun executeCalendarPurge(calendar: CalendarInfo) {
         _uiState.update {
             it.copy(
                 isOperating = true,
                 isClearing = true,
                 operationDone = false,
                 progressFraction = 0f,
-                progressStatusText = "Clearing cloned events for '${pair.fromCalendarName} → ${pair.toCalendarName}'..."
+                progressStatusText = "Purging cloned events from '${calendar.displayName}'...",
+                deleteConfirmationText = ""
             )
         }
 
@@ -467,9 +496,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val deleted = withContext(Dispatchers.IO) {
                     CalendarSyncEngine.clearTargetCalendarEvents(
                         context = context,
-                        toCalendarId = pair.toCalendarId,
-                        fromCalendarId = pair.fromCalendarId,
-                        pairId = pair.id,
+                        toCalendarId = calendar.id,
+                        fromCalendarId = null,
+                        pairId = null,
+                        activePairIds = emptySet(),
                         onProgress = { msg ->
                             _uiState.update { it.copy(progressStatusText = msg) }
                         }
@@ -479,14 +509,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         operationDone = true,
                         progressStatusText = if (deleted > 0) {
-                            "Cleared $deleted cloned event(s) from '${pair.toCalendarName}'."
+                            "Purge complete: $deleted cloned event(s) removed from '${calendar.displayName}'."
                         } else {
-                            "Target calendar '${pair.toCalendarName}' has 0 cloned events for this pair."
+                            "No cloned events found in '${calendar.displayName}' (0 deleted)."
                         }
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(progressStatusText = "Clear failed: ${e.message}") }
+                _uiState.update { it.copy(progressStatusText = "Purge failed: ${e.message}") }
             } finally {
                 _uiState.update {
                     it.copy(
@@ -494,31 +524,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         isClearing = false
                     )
                 }
+                refreshCalendars()
             }
         }
     }
 
-    fun executeNukeTargetNormal(pair: SyncPair) {
-        dismissNukeTargetDialog()
-
+    private fun executeCalendarNuke(calendar: CalendarInfo) {
         _uiState.update {
             it.copy(
                 isOperating = true,
                 isNuking = true,
                 operationDone = false,
                 progressFraction = 0f,
-                progressStatusText = "Deleting all events from '${pair.toCalendarName}'..."
+                progressStatusText = "Deleting all events from '${calendar.displayName}'...",
+                deleteConfirmationText = ""
             )
         }
 
         viewModelScope.launch {
             try {
                 val deleted = withContext(Dispatchers.IO) {
-                    CalendarSyncEngine.clearTargetCalendarEvents(
+                    CalendarSyncEngine.nukeTargetCalendarEvents(
                         context = context,
-                        toCalendarId = pair.toCalendarId,
+                        toCalendarId = calendar.id,
                         fromCalendarId = null,
-                        pairId = null,
                         onProgress = { msg ->
                             _uiState.update { it.copy(progressStatusText = msg) }
                         }
@@ -527,51 +556,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         operationDone = true,
-                        progressStatusText = "Normal wipe complete: $deleted event(s) deleted from '${pair.toCalendarName}'."
+                        progressStatusText = "Wipe complete: $deleted event(s) deleted from '${calendar.displayName}'."
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(progressStatusText = "Wipe failed: ${e.message}") }
-            } finally {
-                _uiState.update {
-                    it.copy(
-                        isOperating = false,
-                        isNuking = false
-                    )
-                }
-                refreshCalendars()
-            }
-        }
-    }
-
-    fun executeNukeTargetForce(pair: SyncPair) {
-        dismissNukeTargetDialog()
-
-        _uiState.update {
-            it.copy(
-                isOperating = true,
-                isNuking = true,
-                operationDone = false,
-                progressFraction = 0f,
-                progressStatusText = "Step 1/3: Forcing Google Cloud download..."
-            )
-        }
-
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    CalendarSyncEngine.nukeTargetCalendarEvents(
-                        context = context,
-                        toCalendarId = pair.toCalendarId,
-                        fromCalendarId = pair.fromCalendarId,
-                        onProgress = { msg ->
-                            _uiState.update { it.copy(progressStatusText = msg) }
-                        }
-                    )
-                }
-                _uiState.update { it.copy(operationDone = true) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(progressStatusText = "Force deep wipe failed: ${e.message}") }
             } finally {
                 _uiState.update {
                     it.copy(
@@ -712,22 +701,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissDeletePairDialog() {
         _uiState.update { it.copy(pairToDelete = null) }
-    }
-
-    fun dismissClearEventsDialog() {
-        if (!_uiState.value.isOperating) {
-            _uiState.update { it.copy(pairToClear = null) }
-        }
-    }
-
-    fun promptNukeTarget(pair: SyncPair) {
-        _uiState.update { it.copy(pairToNuke = pair) }
-    }
-
-    fun dismissNukeTargetDialog() {
-        if (!_uiState.value.isOperating) {
-            _uiState.update { it.copy(pairToNuke = null) }
-        }
     }
 
     fun clearToastMessage() {

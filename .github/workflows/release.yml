@@ -1,0 +1,45 @@
+﻿# Triggered when a version tag (e.g. v2.1-9.15-1) is pushed.
+# Builds a debug APK (no signing config required) and attaches it to the GitHub Release.
+#
+# To build a signed release APK, add KEYSTORE_B64, KEYSTORE_PASS, KEY_ALIAS,
+# and KEY_PASS as GitHub Actions secrets and update the assembleDebug step below.
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Gradle execute permission
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK to release tag name
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          cp app/build/outputs/apk/debug/app-debug.apk "CalCloner-${TAG}.apk"
+
+      - name: Create GitHub Release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CalCloner-${{ github.ref_name }}.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

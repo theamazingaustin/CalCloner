@@ -11,8 +11,8 @@ android {
         applicationId = "com.stripedlens.calcloner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 21
+        versionName = "2.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -41,6 +41,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"

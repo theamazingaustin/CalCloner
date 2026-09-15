@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.stripedlens.calcloner.BuildConfig
 import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
 import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.TopAppBarOverflowMenu
@@ -314,7 +315,7 @@ fun CalendarSyncApp(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "v2.1",
+                                    text = "v${BuildConfig.VERSION_NAME}",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp,
                                     color = TitaniumMint.Mint400

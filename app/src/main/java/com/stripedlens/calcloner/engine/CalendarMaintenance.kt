@@ -31,7 +31,7 @@ object CalendarMaintenance {
      * 3. Source calendar is completely untouched.
      * 4. Organic events and events from other active sync pairs are preserved.
      */
-    suspend fun clearTargetCalendarEvents(
+    suspend fun deleteClonedCalendarEvents(
         context: Context,
         toCalendarId: Long,
         fromCalendarId: Long?,
@@ -196,7 +196,7 @@ object CalendarMaintenance {
      *    preserving deleted=1, dirty=1 tombstones.
      * 5. Triggers expedited cloud sync with OVERRIDE_TOO_MANY_DELETIONS to permanently erase events from cloud.
      */
-    suspend fun nukeTargetCalendarEvents(
+    suspend fun deleteAllCalendarEvents(
         context: Context,
         toCalendarId: Long,
         fromCalendarId: Long?,

@@ -200,7 +200,7 @@ object CalendarSyncEngine {
     /**
      * Remove all events strictly from the TARGET (Clone) calendar.
      */
-    suspend fun clearTargetCalendarEvents(
+    suspend fun deleteClonedCalendarEvents(
         context: Context,
         toCalendarId: Long,
         fromCalendarId: Long?,
@@ -208,7 +208,7 @@ object CalendarSyncEngine {
         activePairIds: Set<String> = emptySet(),
         onProgress: ((message: String) -> Unit)? = null
     ): Int = syncMutex.withLock {
-        CalendarMaintenance.clearTargetCalendarEvents(
+        CalendarMaintenance.deleteClonedCalendarEvents(
             context = context,
             toCalendarId = toCalendarId,
             fromCalendarId = fromCalendarId,
@@ -220,15 +220,15 @@ object CalendarSyncEngine {
     }
 
     /**
-     * Complete Nuke of Target Calendar with 3-step cloud download and batch wipe.
+     * Complete Wipe of Target Calendar with 3-step cloud download and batch wipe.
      */
-    suspend fun nukeTargetCalendarEvents(
+    suspend fun deleteAllCalendarEvents(
         context: Context,
         toCalendarId: Long,
         fromCalendarId: Long?,
         onProgress: ((message: String) -> Unit)? = null
     ): Int = syncMutex.withLock {
-        CalendarMaintenance.nukeTargetCalendarEvents(
+        CalendarMaintenance.deleteAllCalendarEvents(
             context = context,
             toCalendarId = toCalendarId,
             fromCalendarId = fromCalendarId,

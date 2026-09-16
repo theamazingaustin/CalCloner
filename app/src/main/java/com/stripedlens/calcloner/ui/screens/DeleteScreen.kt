@@ -228,14 +228,14 @@ fun DeleteScreen(
                 // Option B: Wipe All Events
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (uiState.deleteOperationType == DeleteOperationType.NUKE_ALL) {
+                    color = if (uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
                         TitaniumMint.Rose500.copy(alpha = 0.08f)
                     } else {
                         MaterialTheme.colorScheme.background
                     },
                     border = BorderStroke(
                         1.dp,
-                        if (uiState.deleteOperationType == DeleteOperationType.NUKE_ALL) {
+                        if (uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
                             TitaniumMint.Rose500.copy(alpha = 0.5f)
                         } else {
                             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -243,7 +243,7 @@ fun DeleteScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOperationTypeSelected(DeleteOperationType.NUKE_ALL) }
+                        .clickable { onOperationTypeSelected(DeleteOperationType.WIPE_ALL) }
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -251,8 +251,8 @@ fun DeleteScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         RadioButton(
-                            selected = uiState.deleteOperationType == DeleteOperationType.NUKE_ALL,
-                            onClick = { onOperationTypeSelected(DeleteOperationType.NUKE_ALL) },
+                            selected = uiState.deleteOperationType == DeleteOperationType.WIPE_ALL,
+                            onClick = { onOperationTypeSelected(DeleteOperationType.WIPE_ALL) },
                             colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Rose400)
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -418,7 +418,7 @@ fun DeleteScreen(
                             Text(
                                 text = when (uiState.deleteOperationType) {
                                     DeleteOperationType.PURGE_CLONED -> "Purge Cloned Events"
-                                    DeleteOperationType.NUKE_ALL -> "Permanently Delete All Events"
+                                    DeleteOperationType.WIPE_ALL -> "Permanently Delete All Events"
                                 },
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,

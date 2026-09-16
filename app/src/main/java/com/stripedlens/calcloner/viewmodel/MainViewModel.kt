@@ -62,7 +62,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         syncOnLowBattery = onLow
                     )
                 }
-                rescheduleBackgroundSyncIfConfigured()
+                rescheduleBackgroundSync()
             }
         }
 
@@ -112,7 +112,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Dynamically updates background WorkManager and JobService triggers
      * based on user's active sync pairs and configured interval.
      */
-    private fun rescheduleBackgroundSyncIfConfigured() {
+    private fun rescheduleBackgroundSync() {
         val state = _uiState.value
         val enabledPairs = state.syncPairs.filter { it.isEnabled }
         val interval = state.syncIntervalMinutes
@@ -391,7 +391,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isOperating = true,
-                        isClearing = true,
+                        isPurgingCloned = true,
                         operationDone = false,
                         progressFraction = 0f,
                         progressStatusText = "Deleting cloned events for '${pair.displayName}'..."
@@ -400,7 +400,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 val activeIds = state.syncPairs.map { it.id }.toSet()
                 val deleted = withContext(Dispatchers.IO) {
-                    CalendarSyncEngine.clearTargetCalendarEvents(
+                    CalendarSyncEngine.deleteClonedCalendarEvents(
                         context = context,
                         toCalendarId = pair.toCalendarId,
                         fromCalendarId = pair.fromCalendarId,
@@ -416,7 +416,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isOperating = false,
-                        isClearing = false,
+                        isPurgingCloned = false,
                         operationDone = true,
                         progressStatusText = "Deleted pair '${pair.displayName}' and removed $deleted cloned event(s)."
                     )
@@ -474,16 +474,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         when (type) {
-            DeleteOperationType.PURGE_CLONED -> executeCalendarPurge(calendar)
-            DeleteOperationType.NUKE_ALL -> executeCalendarNuke(calendar)
+            DeleteOperationType.PURGE_CLONED -> executePurgeClonedEvents(calendar)
+            DeleteOperationType.WIPE_ALL -> executeWipeAllEvents(calendar)
         }
     }
 
-    private fun executeCalendarPurge(calendar: CalendarInfo) {
+    private fun executePurgeClonedEvents(calendar: CalendarInfo) {
         _uiState.update {
             it.copy(
                 isOperating = true,
-                isClearing = true,
+                isPurgingCloned = true,
                 operationDone = false,
                 progressFraction = 0f,
                 progressStatusText = "Purging cloned events from '${calendar.displayName}'...",
@@ -494,7 +494,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val deleted = withContext(Dispatchers.IO) {
-                    CalendarSyncEngine.clearTargetCalendarEvents(
+                    CalendarSyncEngine.deleteClonedCalendarEvents(
                         context = context,
                         toCalendarId = calendar.id,
                         fromCalendarId = null,
@@ -521,7 +521,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isOperating = false,
-                        isClearing = false
+                        isPurgingCloned = false
                     )
                 }
                 refreshCalendars()
@@ -529,11 +529,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun executeCalendarNuke(calendar: CalendarInfo) {
+    private fun executeWipeAllEvents(calendar: CalendarInfo) {
         _uiState.update {
             it.copy(
                 isOperating = true,
-                isNuking = true,
+                isWipingAll = true,
                 operationDone = false,
                 progressFraction = 0f,
                 progressStatusText = "Deleting all events from '${calendar.displayName}'...",
@@ -544,7 +544,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val deleted = withContext(Dispatchers.IO) {
-                    CalendarSyncEngine.nukeTargetCalendarEvents(
+                    CalendarSyncEngine.deleteAllCalendarEvents(
                         context = context,
                         toCalendarId = calendar.id,
                         fromCalendarId = null,
@@ -565,7 +565,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isOperating = false,
-                        isNuking = false
+                        isWipingAll = false
                     )
                 }
                 refreshCalendars()

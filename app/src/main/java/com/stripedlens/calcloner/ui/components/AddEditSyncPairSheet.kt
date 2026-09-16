@@ -31,6 +31,7 @@ import androidx.compose.ui.zIndex
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.domain.routing.CycleDetector
+import com.stripedlens.calcloner.ui.components.BackgroundBatteryProtectionBanner
 import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.components.sheets.PairDeleteSection
@@ -44,7 +45,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Bottom sheet coordinator for creating or editing a calendar sync pair configuration.
+ * Full bottom sheet workflow for creating or modifying a sync pair.
+ * Encapsulates the animated route conduit, calendar pickers, sync range sliders,
+ * granular field toggles, and deletion flow.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +60,8 @@ fun AddEditSyncPairSheet(
     onSaveAndSync: ((SyncPair) -> Unit)? = null,
     onSyncNow: ((SyncPair) -> Unit)? = null,
     isSyncing: Boolean = false,
+    isIgnoringBatteryOptimizations: Boolean = true,
+    onOpenBatterySettings: (() -> Unit)? = null,
     onDeletePairWithOptions: ((SyncPair, Boolean) -> Unit)? = null
 ) {
     var nickname by remember { mutableStateOf(pairToEdit?.nickname ?: "") }
@@ -526,6 +531,14 @@ fun AddEditSyncPairSheet(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
+                    // Battery Optimization Banner
+                    if (onOpenBatterySettings != null) {
+                        BackgroundBatteryProtectionBanner(
+                            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
+                            onOpenBatterySettings = onOpenBatterySettings
+                        )
+                    }
+
                     // Nickname Input
                     OutlinedTextField(
                         value = nickname,

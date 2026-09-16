@@ -48,7 +48,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -67,6 +69,7 @@ import com.stripedlens.calcloner.BuildConfig
 import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
 import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.TopAppBarOverflowMenu
+import com.stripedlens.calcloner.ui.dialogs.BatteryOptimizationInfoDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DisclaimerConsentDialog
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
@@ -210,7 +213,9 @@ fun CalendarSyncApp(
         }
     }
 
-    fun openBatterySettings() {
+    var showBatteryInfoDialog by remember { mutableStateOf(false) }
+
+    fun launchBatteryOptimizationIntent() {
         try {
             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                 data = Uri.parse("package:${context.packageName}")
@@ -226,6 +231,14 @@ fun CalendarSyncApp(
         }
     }
 
+    fun openBatterySettings() {
+        if (!uiState.isIgnoringBatteryOptimizations) {
+            showBatteryInfoDialog = true
+        } else {
+            launchBatteryOptimizationIntent()
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Dialogs & Modals
     // ─────────────────────────────────────────────────────────────────────────
@@ -233,6 +246,18 @@ fun CalendarSyncApp(
     // First-Run Consent / Disclaimer Popup
     if (!uiState.isDisclaimerAccepted) {
         DisclaimerConsentDialog(onAccept = { viewModel.acceptDisclaimer() })
+    }
+
+    // Battery Optimization Educational Pre-Dialog
+    if (showBatteryInfoDialog) {
+        BatteryOptimizationInfoDialog(
+            onContinue = {
+                launchBatteryOptimizationIntent()
+            },
+            onDismiss = {
+                showBatteryInfoDialog = false
+            }
+        )
     }
 
     // Add / Edit Sync Pair Modal Bottom Sheet
@@ -247,6 +272,8 @@ fun CalendarSyncApp(
             onSaveAndSync = { pair -> viewModel.saveAndSyncPair(pair) },
             onSyncNow = { pair -> viewModel.syncSinglePair(pair) },
             isSyncing = uiState.isSyncing && (uiState.syncingPairId == currentPairToEdit?.id),
+            isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
+            onOpenBatterySettings = { openBatterySettings() },
             onDeletePairWithOptions = { pair, deleteClonedEvents ->
                 viewModel.deletePair(pair, deleteClonedEvents)
             }

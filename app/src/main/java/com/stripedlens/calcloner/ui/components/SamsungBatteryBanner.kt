@@ -20,18 +20,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,20 +49,20 @@ import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 
 /**
- * Samsung-specific battery guidance banner warning users about Samsung One UI
- * putting background sync services into deep sleep unless unrestricted.
+ * Universal background battery guidance banner warning users when the app is restricted/optimized,
+ * preventing reliable automated background calendar synchronization.
  */
 @Composable
-fun SamsungBatteryBanner(
+fun BackgroundBatteryProtectionBanner(
     isIgnoringBatteryOptimizations: Boolean,
     onOpenBatterySettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isSamsungDevice = remember { Build.MANUFACTURER.contains("samsung", ignoreCase = true) }
-    var samsungBannerDismissed by remember { mutableStateOf(false) }
+    var bannerDismissed by remember { mutableStateOf(false) }
 
     AnimatedVisibility(
-        visible = isSamsungDevice && !isIgnoringBatteryOptimizations && !samsungBannerDismissed,
+        visible = !isIgnoringBatteryOptimizations && !bannerDismissed,
         enter = fadeIn(tween(200)) + expandVertically(tween(250)),
         exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
         modifier = modifier
@@ -70,7 +70,9 @@ fun SamsungBatteryBanner(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
+            ),
             border = BorderStroke(1.dp, TitaniumMint.Amber400.copy(alpha = 0.6f))
         ) {
             Column(
@@ -78,59 +80,69 @@ fun SamsungBatteryBanner(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = TitaniumMint.Amber400,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Samsung Background Protection",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = TitaniumMint.Amber400,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (isSamsungDevice) "Samsung Background Protection" else "Background Sync Protection",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Top-right close button
+                    IconButton(
+                        onClick = { bannerDismissed = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
+
                 Text(
-                    text = "Samsung One UI may put CalCloner into 'Deep Sleep' when unused, stopping automated background syncs. Set battery to 'Unrestricted' to prevent sleep.",
+                    text = if (isSamsungDevice) {
+                        "Samsung One UI may put CalCloner into 'Deep Sleep' when unused, stopping automated background syncs. Set battery to 'Unrestricted' to prevent sleep."
+                    } else {
+                        "Android battery optimization may defer or pause CalCloner background syncs during sleep. Allow 'Unrestricted' battery to ensure continuous sync."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+
+                Button(
+                    onClick = onOpenBatterySettings,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TitaniumMint.Amber400,
+                        contentColor = Color(0xFF09090B)
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(34.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
                 ) {
-                    Button(
-                        onClick = onOpenBatterySettings,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = TitaniumMint.Amber400,
-                            contentColor = Color(0xFF09090B)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(34.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
-                    ) {
-                        Text(
-                            text = "Unrestrict Battery",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { samsungBannerDismissed = true },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(34.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                    ) {
-                        Text(
-                            text = "Dismiss",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
+                    Text(
+                        text = "Unrestrict Battery",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -138,8 +150,23 @@ fun SamsungBatteryBanner(
 }
 
 /**
- * Status indicator card showing whether battery optimization is unrestricted or optimized,
- * plus actionable guidance if periodic sync is active under optimized mode.
+ * Backward compatibility alias for [BackgroundBatteryProtectionBanner].
+ */
+@Composable
+fun SamsungBatteryBanner(
+    isIgnoringBatteryOptimizations: Boolean,
+    onOpenBatterySettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackgroundBatteryProtectionBanner(
+        isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
+        onOpenBatterySettings = onOpenBatterySettings,
+        modifier = modifier
+    )
+}
+
+/**
+ * Status indicator row showing whether battery optimization is unrestricted or restricted/throttled.
  */
 @Composable
 fun BatteryOptimizationStatusCard(
@@ -148,154 +175,115 @@ fun BatteryOptimizationStatusCard(
     onOpenBatterySettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isIgnoringBatteryOptimizations) {
+                onOpenBatterySettings()
+            }
     ) {
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !isIgnoringBatteryOptimizations) {
-                    onOpenBatterySettings()
-                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (isIgnoringBatteryOptimizations) {
+                        TitaniumMint.Mint500.copy(alpha = 0.1f)
+                    } else {
+                        TitaniumMint.Amber500.copy(alpha = 0.12f)
+                    },
+                    modifier = Modifier.size(24.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = TitaniumMint.Mint500.copy(alpha = 0.1f),
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = TitaniumMint.Mint400,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = "Battery Optimization",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                if (isIgnoringBatteryOptimizations) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = TitaniumMint.Mint500.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.3f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = TitaniumMint.Mint400,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "Unrestricted",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TitaniumMint.Mint400
-                            )
-                        }
-                    }
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.3f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = TitaniumMint.Amber400,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "Optimized (Tap to fix)",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TitaniumMint.Amber400
-                            )
-                        }
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isIgnoringBatteryOptimizations) {
+                                Icons.Default.CheckCircle
+                            } else {
+                                Icons.Default.BatteryAlert
+                            },
+                            contentDescription = null,
+                            tint = if (isIgnoringBatteryOptimizations) {
+                                TitaniumMint.Mint400
+                            } else {
+                                TitaniumMint.Amber400
+                            },
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
+                Text(
+                    text = "Battery Optimization",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
-        }
 
-        // Battery Optimization Warning Banner
-        AnimatedVisibility(
-            visible = syncIntervalMinutes != -1 && !isIgnoringBatteryOptimizations,
-            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-            exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+            if (isIgnoringBatteryOptimizations) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.3f))
                 ) {
                     Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
+                            imageVector = Icons.Default.Check,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(16.dp)
+                            tint = TitaniumMint.Mint400,
+                            modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = "Unrestricted Battery Recommended",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            text = "Unrestricted",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TitaniumMint.Mint400
                         )
                     }
-                    Text(
-                        text = "Android may defer background tasks during deep sleep. Set battery to Unrestricted for instant reactive sync.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    FilledTonalButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onOpenBatterySettings
+                }
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Text("Set Battery to Unrestricted", style = MaterialTheme.typography.labelMedium)
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = TitaniumMint.Amber400,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = "Restricted (Tap to fix)",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TitaniumMint.Amber400
+                        )
                     }
                 }
             }
         }
     }
 }
+

@@ -19,8 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stripedlens.calcloner.SyncPair
+import com.stripedlens.calcloner.ui.components.BackgroundBatteryProtectionBanner
 import com.stripedlens.calcloner.ui.components.SyncOverviewCard
-import com.stripedlens.calcloner.ui.components.SamsungBatteryBanner
 import com.stripedlens.calcloner.ui.components.SyncEngineSettingsCard
 import com.stripedlens.calcloner.ui.components.SyncPairCard
 import com.stripedlens.calcloner.viewmodel.MainUiState
@@ -81,8 +81,8 @@ fun SyncScreen(
                 onSyncAll = onSyncAll
             )
 
-            // Samsung Deep Sleep Guidance Banner
-            SamsungBatteryBanner(
+            // Universal Background Battery Guidance Banner
+            BackgroundBatteryProtectionBanner(
                 isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
                 onOpenBatterySettings = onOpenBatterySettings
             )

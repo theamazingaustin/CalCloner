@@ -26,13 +26,13 @@ import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 
 /**
- * Danger Zone section for [AddEditSyncPairSheet].
+ * Section in [AddEditSyncPairSheet] providing sync pair configuration removal controls.
  *
- * Dedicated strictly to sync pair configuration removal.
+ * Dedicated strictly to sync pair configuration deletion.
  * Standalone calendar event wiping is managed in the dedicated Delete/Maintenance screen.
  */
 @Composable
-fun DangerZoneSection(
+fun PairDeleteSection(
     pairToEdit: SyncPair?,
     onDeleteConfigClick: () -> Unit,
     modifier: Modifier = Modifier

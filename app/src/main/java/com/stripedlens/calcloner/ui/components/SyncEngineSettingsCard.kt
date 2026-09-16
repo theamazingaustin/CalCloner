@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
  * Settings card configuring background sync intervals, low-power mode behavior,
  * and system battery optimization whitelisting.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SyncEngineSettingsCard(
     syncIntervalMinutes: Int,

@@ -48,11 +48,11 @@ import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import kotlinx.coroutines.launch
 
 /**
- * Master Sync Card displaying the global active/paused toggle for all sync pairs
+ * Sync Overview Card displaying the global active/paused toggle for all sync pairs
  * and the primary "Sync All" action button with reactive glow and pulse feedback.
  */
 @Composable
-fun MasterSyncCard(
+fun SyncOverviewCard(
     syncPairs: List<SyncPair>,
     isSyncingAll: Boolean,
     isOperating: Boolean,

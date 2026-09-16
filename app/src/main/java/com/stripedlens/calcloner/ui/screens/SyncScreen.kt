@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stripedlens.calcloner.SyncPair
-import com.stripedlens.calcloner.ui.components.MasterSyncCard
+import com.stripedlens.calcloner.ui.components.SyncOverviewCard
 import com.stripedlens.calcloner.ui.components.SamsungBatteryBanner
 import com.stripedlens.calcloner.ui.components.SyncEngineSettingsCard
 import com.stripedlens.calcloner.ui.components.SyncPairCard
@@ -71,8 +71,8 @@ fun SyncScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Master Sync Controls Card
-            MasterSyncCard(
+            // Overview Sync Controls Card
+            SyncOverviewCard(
                 syncPairs = uiState.syncPairs,
                 isSyncingAll = uiState.isSyncingAll,
                 isOperating = uiState.isOperating,

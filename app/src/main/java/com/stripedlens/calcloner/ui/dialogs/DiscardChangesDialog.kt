@@ -10,8 +10,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.DialogProperties
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import com.stripedlens.calcloner.ui.theme.UiDimensions
 
 /**
  * Confirmation dialog shown when the user attempts to dismiss a dirty edit sheet.
@@ -23,6 +27,8 @@ fun DiscardChangesDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         icon = {
             Icon(
                 imageVector = Icons.Default.Warning,

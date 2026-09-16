@@ -31,8 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import com.stripedlens.calcloner.ui.theme.UiDimensions
 
 /**
  * Canonical confirmation dialog for deleting a configured [SyncPair].
@@ -51,6 +53,8 @@ fun DeletePairDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         icon = {
             Icon(
                 imageVector = Icons.Default.DeleteForever,

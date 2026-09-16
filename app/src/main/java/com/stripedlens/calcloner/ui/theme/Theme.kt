@@ -27,6 +27,17 @@ object TitaniumMint {
     val BorderDark = Color(0xFF2E2E34)
 }
 
+/**
+ * Universal layout and dimension tokens for consistent UI sizing across the application.
+ */
+object UiDimensions {
+    /**
+     * Percentage of screen width used by dialogs and popups (0.92f = 92% screen width).
+     * Adjust this value in one place to universally change all dialog widths.
+     */
+    const val DialogWidthFraction = 0.92f
+}
+
 private val DarkColorScheme = darkColorScheme(
     primary = TitaniumMint.Mint400,
     onPrimary = Color(0xFF003824),

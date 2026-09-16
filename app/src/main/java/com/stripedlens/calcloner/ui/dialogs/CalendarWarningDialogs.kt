@@ -17,7 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import com.stripedlens.calcloner.ui.theme.UiDimensions
 
 /**
  * Educational Dialog for Source ("Read Only") and Target ("Writable Replica") calendar roles.
@@ -37,14 +39,16 @@ fun CalendarRoleInfoDialog(
         "This calendar will be populated with all events found in the source calendar. In case there is a bug or glitch, it is highly recommended to sync to a blank calendar, not a calendar mixed with other / manually created events."
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.4f)),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .fillMaxWidth(UiDimensions.DialogWidthFraction)
         ) {
             Column(
                 modifier = Modifier
@@ -156,6 +160,8 @@ fun BatteryOptimizationInfoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         shape = RoundedCornerShape(16.dp),
         containerColor = MaterialTheme.colorScheme.surface,
         icon = {

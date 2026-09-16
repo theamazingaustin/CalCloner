@@ -32,7 +32,7 @@ object CalendarEventWriter {
 
     private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
     private val CALCLONER_TAG_REPLACE_REGEX = Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
-    private val CALCLONE_TAG_REPLACE_REGEX = Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
+    private val LEGACY_CALCLONE_TAG_REPLACE_REGEX = Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
 
     internal data class ClonedEventMeta(
         val targetId: Long,
@@ -207,7 +207,7 @@ object CalendarEventWriter {
                         event.description.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
                     }
                     event.description.contains("[CalClone-ID:") -> {
-                        event.description.replace(CALCLONE_TAG_REPLACE_REGEX, trackingTag)
+                        event.description.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
                     }
                     else -> "${event.description}\n\n$trackingTag"
                 }

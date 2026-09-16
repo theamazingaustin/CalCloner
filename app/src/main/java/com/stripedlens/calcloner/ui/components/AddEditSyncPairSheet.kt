@@ -33,9 +33,9 @@ import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.domain.routing.CycleDetector
 import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
-import com.stripedlens.calcloner.ui.components.sheets.DangerZoneSection
+import com.stripedlens.calcloner.ui.components.sheets.PairDeleteSection
 import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
-import com.stripedlens.calcloner.ui.dialogs.CalendarInfoPopoverDialog
+import com.stripedlens.calcloner.ui.dialogs.CalendarRoleInfoDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DiscardChangesDialog
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
@@ -220,10 +220,10 @@ fun AddEditSyncPairSheet(
         }
     }
 
-    // Info Popovers
+    // Info Dialogs
     var infoModalType by remember { mutableStateOf<String?>(null) }
     if (infoModalType != null) {
-        CalendarInfoPopoverDialog(
+        CalendarRoleInfoDialog(
             type = infoModalType!!,
             onDismiss = { infoModalType = null }
         )
@@ -721,8 +721,8 @@ fun AddEditSyncPairSheet(
                         accentColor = themeAccentColor
                     )
 
-                    // Danger Zone (Delete Configuration)
-                    DangerZoneSection(
+                    // Delete Pair Configuration Section
+                    PairDeleteSection(
                         pairToEdit = pairToEdit,
                         onDeleteConfigClick = { showDeletePairDialog = true }
                     )

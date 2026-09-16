@@ -20,10 +20,10 @@ import androidx.compose.ui.window.Dialog
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 
 /**
- * Educational Popover Dialog for Source ("Read Only") and Target ("Writable Replica").
+ * Educational Dialog for Source ("Read Only") and Target ("Writable Replica") calendar roles.
  */
 @Composable
-fun CalendarInfoPopoverDialog(
+fun CalendarRoleInfoDialog(
     type: String, // "source" or "target"
     onDismiss: () -> Unit
 ) {

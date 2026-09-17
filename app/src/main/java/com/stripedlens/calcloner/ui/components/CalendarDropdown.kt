@@ -52,6 +52,9 @@ fun CalendarDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            leadingIcon = selectedCalendar?.let {
+                { CalendarColorDot(color = it.color, size = 12.dp) }
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,8 +88,9 @@ fun CalendarDropdown(
                     }
                     cals.forEach { cal ->
                         DropdownMenuItem(
+                            leadingIcon = { CalendarColorDot(color = cal.color, size = 10.dp) },
                             text = {
-                                Column(modifier = Modifier.padding(start = 6.dp)) {
+                                Column(modifier = Modifier.padding(start = 2.dp)) {
                                     Text(cal.displayName, fontWeight = FontWeight.Medium)
                                     if (cal.isPrimary) {
                                         Text("Primary", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary)

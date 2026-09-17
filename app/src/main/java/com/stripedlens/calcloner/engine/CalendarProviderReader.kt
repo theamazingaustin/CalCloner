@@ -46,7 +46,8 @@ object CalendarProviderReader {
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
             CalendarContract.Calendars.ACCOUNT_NAME,
             CalendarContract.Calendars.IS_PRIMARY,
-            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            CalendarContract.Calendars.CALENDAR_COLOR
         )
 
         val cursor = context.contentResolver.query(
@@ -63,16 +64,19 @@ object CalendarProviderReader {
             val accCol = it.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_NAME)
             val primaryCol = it.getColumnIndexOrThrow(CalendarContract.Calendars.IS_PRIMARY)
             val accessCol = it.getColumnIndex(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL)
+            val colorCol = it.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
 
             while (it.moveToNext()) {
                 val accessLevel = if (accessCol != -1 && !it.isNull(accessCol)) it.getInt(accessCol) else 700
+                val color = if (colorCol != -1 && !it.isNull(colorCol)) it.getInt(colorCol) else null
                 calendars.add(
                     CalendarInfo(
                         id = it.getLong(idCol),
                         displayName = it.getString(nameCol) ?: "Unnamed Calendar",
                         accountName = it.getString(accCol) ?: "Local",
                         isPrimary = it.getInt(primaryCol) == 1,
-                        accessLevel = accessLevel
+                        accessLevel = accessLevel,
+                        color = color
                     )
                 )
             }

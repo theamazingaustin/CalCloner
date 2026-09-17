@@ -5,7 +5,8 @@ data class CalendarInfo(
     val displayName: String,
     val accountName: String,
     val isPrimary: Boolean,
-    val accessLevel: Int = 700
+    val accessLevel: Int = 700,
+    val color: Int? = null
 ) {
     val canWrite: Boolean get() = accessLevel >= 500 // CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
 }

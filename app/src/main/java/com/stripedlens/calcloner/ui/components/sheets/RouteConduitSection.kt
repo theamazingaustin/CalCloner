@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.stripedlens.calcloner.ui.components.CalendarColorDot
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -281,20 +282,27 @@ fun CalendarSelectionCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (selectedCalendar != null) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = selectedCalendar.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = selectedCalendar.accountName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp
-                                )
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CalendarColorDot(color = selectedCalendar.color, size = 12.dp)
+                                Column {
+                                    Text(
+                                        text = selectedCalendar.displayName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = selectedCalendar.accountName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         } else {
                             Text(
@@ -326,6 +334,7 @@ fun CalendarSelectionCard(
                     } else {
                         filteredList.forEach { cal ->
                             DropdownMenuItem(
+                                leadingIcon = { CalendarColorDot(color = cal.color, size = 10.dp) },
                                 text = {
                                     Column {
                                         Text(

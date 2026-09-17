@@ -155,16 +155,13 @@ class CalendarSyncJobService : JobService() {
                     val totalInserted = results.values.sumOf { it.insertedCount }
                     val totalUpdated = results.values.sumOf { it.updatedCount }
                     val totalDeleted = results.values.sumOf { it.deletedCount }
-                    val statusMsg = when {
-                        totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${affectedPairs.size} pair(s)."
-                        else -> {
-                            val parts = mutableListOf<String>()
-                            if (totalInserted > 0) parts.add("$totalInserted added")
-                            if (totalUpdated > 0) parts.add("$totalUpdated updated")
-                            if (totalDeleted > 0) parts.add("$totalDeleted removed")
-                            "Auto-synced (${affectedPairs.size} pairs): ${parts.joinToString(", ")}."
-                        }
-                    }
+                    val statusMsg = com.stripedlens.calcloner.util.DateTimeUtils.formatSyncSummary(
+                        inserted = totalInserted,
+                        updated = totalUpdated,
+                        deleted = totalDeleted,
+                        pairCount = affectedPairs.size,
+                        prefix = "Auto-sync"
+                    )
                     repo.saveLastSync(System.currentTimeMillis(), statusMsg)
                 }
                 return

@@ -169,11 +169,12 @@ object CalendarSyncEngine {
                 )
                 val durationMs = System.currentTimeMillis() - startTime
                 results[pair.id] = res
-                val parts = mutableListOf<String>()
-                if (res.insertedCount > 0) parts.add("${res.insertedCount} added")
-                if (res.updatedCount > 0) parts.add("${res.updatedCount} updated")
-                if (res.deletedCount > 0) parts.add("${res.deletedCount} removed")
-                val statusMsg = if (parts.isEmpty()) "Sync complete: 0 changes." else "Sync complete: ${parts.joinToString(", ")}."
+                val statusMsg = com.stripedlens.calcloner.util.DateTimeUtils.formatSyncSummary(
+                    inserted = res.insertedCount,
+                    updated = res.updatedCount,
+                    deleted = res.deletedCount,
+                    prefix = "Sync complete"
+                )
                 repo.updatePairSyncStatus(
                     pairId = pair.id,
                     timestamp = System.currentTimeMillis(),

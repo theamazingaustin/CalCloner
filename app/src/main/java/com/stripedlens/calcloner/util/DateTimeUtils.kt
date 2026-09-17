@@ -50,4 +50,31 @@ object DateTimeUtils {
             else -> "$days days"
         }
     }
+
+    /**
+     * Standardizes sync count and telemetry status strings across all workers and viewmodels.
+     */
+    fun formatSyncSummary(
+        inserted: Int,
+        updated: Int,
+        deleted: Int,
+        pairCount: Int? = null,
+        prefix: String = "Sync complete"
+    ): String {
+        val pairsSuffix = if (pairCount != null) " across $pairCount pair(s)" else ""
+        return if (inserted == 0 && updated == 0 && deleted == 0) {
+            "$prefix: 0 changes$pairsSuffix."
+        } else {
+            val parts = mutableListOf<String>()
+            if (inserted > 0) parts.add("$inserted added")
+            if (updated > 0) parts.add("$updated updated")
+            if (deleted > 0) parts.add("$deleted removed")
+            val summary = parts.joinToString(", ")
+            if (pairCount != null) {
+                "$prefix ($pairCount pairs): $summary."
+            } else {
+                "$prefix: $summary."
+            }
+        }
+    }
 }

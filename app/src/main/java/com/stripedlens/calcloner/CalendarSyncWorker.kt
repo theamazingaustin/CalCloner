@@ -80,16 +80,13 @@ class CalendarSyncWorker(
                 )
             }
 
-            val statusMsg = when {
-                totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${validPairs.size} pair(s)."
-                else -> {
-                    val parts = mutableListOf<String>()
-                    if (totalInserted > 0) parts.add("$totalInserted added")
-                    if (totalUpdated > 0) parts.add("$totalUpdated updated")
-                    if (totalDeleted > 0) parts.add("$totalDeleted removed")
-                    "Auto-synced (${validPairs.size} pairs): ${parts.joinToString(", ")}."
-                }
-            }
+            val statusMsg = com.stripedlens.calcloner.util.DateTimeUtils.formatSyncSummary(
+                inserted = totalInserted,
+                updated = totalUpdated,
+                deleted = totalDeleted,
+                pairCount = validPairs.size,
+                prefix = "Auto-sync"
+            )
 
             repo.saveLastSync(System.currentTimeMillis(), statusMsg)
             if (failedPairs.isNotEmpty()) Result.retry() else Result.success()

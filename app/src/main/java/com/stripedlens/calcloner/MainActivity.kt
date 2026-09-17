@@ -66,13 +66,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.stripedlens.calcloner.BuildConfig
-import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
 import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
-import com.stripedlens.calcloner.ui.components.TopAppBarOverflowMenu
-import com.stripedlens.calcloner.ui.dialogs.BatteryOptimizationInfoDialog
-import com.stripedlens.calcloner.ui.dialogs.ConfigImportPreviewDialog
-import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
-import com.stripedlens.calcloner.ui.dialogs.DisclaimerConsentDialog
+import com.stripedlens.calcloner.ui.components.CalClonerTopBar
+import com.stripedlens.calcloner.ui.dialogs.MainDialogHost
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
 import com.stripedlens.calcloner.ui.screens.SyncScreen
 import com.stripedlens.calcloner.ui.theme.CalClonerTheme
@@ -262,62 +258,24 @@ fun CalendarSyncApp(
     // Dialogs & Modals
     // ─────────────────────────────────────────────────────────────────────────
 
-    // First-Run Consent / Disclaimer Popup
-    if (!uiState.isDisclaimerAccepted) {
-        DisclaimerConsentDialog(onAccept = { viewModel.acceptDisclaimer() })
-    }
-
-    // Battery Optimization Educational Pre-Dialog
-    if (showBatteryInfoDialog) {
-        BatteryOptimizationInfoDialog(
-            onContinue = {
-                launchBatteryOptimizationIntent()
-            },
-            onDismiss = {
-                showBatteryInfoDialog = false
-            }
-        )
-    }
-
-    // Add / Edit Sync Pair Modal Bottom Sheet
-    if (uiState.showAddEditSheet) {
-        val currentPairToEdit = uiState.syncPairs.find { it.id == uiState.pairToEdit?.id } ?: uiState.pairToEdit
-        AddEditSyncPairSheet(
-            pairToEdit = currentPairToEdit,
-            existingPairs = uiState.syncPairs,
-            availableCalendars = uiState.availableCalendars,
-            onDismiss = { viewModel.dismissAddEditSheet() },
-            onSavePair = { pair -> viewModel.upsertPair(pair) },
-            onSaveAndSync = { pair -> viewModel.saveAndSyncPair(pair) },
-            onSyncNow = { pair -> viewModel.syncSinglePair(pair) },
-            isSyncing = uiState.isSyncing && (uiState.syncingPairId == currentPairToEdit?.id),
-            isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
-            onOpenBatterySettings = { openBatterySettings() },
-            onDeletePairWithOptions = { pair, deleteClonedEvents ->
-                viewModel.deletePair(pair, deleteClonedEvents)
-            }
-        )
-    }
-
-    // Delete Pair Confirmation Dialog
-    uiState.pairToDelete?.let { pair ->
-        DeletePairDialog(
-            pair = pair,
-            onDismiss = { viewModel.dismissDeletePairDialog() },
-            onConfirmDelete = { deleteClonedEvents ->
-                viewModel.deletePair(pair, deleteClonedEvents)
-            }
-        )
-    }
-
-    // Configuration Import Preview Dialog
-    uiState.importPreview?.let { preview ->
-        ConfigImportPreviewDialog(
-            previewState = preview,
-            onConfirmApply = { viewModel.applyImportPreview() },
-            onDismiss = { viewModel.dismissImportPreview() }
-        )
-    }
+    MainDialogHost(
+        uiState = uiState,
+        showBatteryInfoDialog = showBatteryInfoDialog,
+        onAcceptDisclaimer = { viewModel.acceptDisclaimer() },
+        onContinueBatteryDialog = { launchBatteryOptimizationIntent() },
+        onDismissBatteryDialog = { showBatteryInfoDialog = false },
+        onDismissAddEditSheet = { viewModel.dismissAddEditSheet() },
+        onSavePair = { pair -> viewModel.upsertPair(pair) },
+        onSaveAndSync = { pair -> viewModel.saveAndSyncPair(pair) },
+        onSyncSinglePair = { pair -> viewModel.syncSinglePair(pair) },
+        onOpenBatterySettings = { openBatterySettings() },
+        onDeletePairWithOptions = { pair, deleteClonedEvents ->
+            viewModel.deletePair(pair, deleteClonedEvents)
+        },
+        onDismissDeletePairDialog = { viewModel.dismissDeletePairDialog() },
+        onApplyImportPreview = { viewModel.applyImportPreview() },
+        onDismissImportPreview = { viewModel.dismissImportPreview() }
+    )
 
     // ─────────────────────────────────────────────────────────────────────────
     // Scaffold UI
@@ -326,85 +284,14 @@ fun CalendarSyncApp(
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars,
         topBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                ) {
-                    // Header Row: Branding, Theme Toggle, Overflow Menu
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = TitaniumMint.Mint500,
-                                modifier = Modifier.size(34.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_calcloner),
-                                        contentDescription = "CalCloner Logo",
-                                        tint = Color(0xFF003824),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "CalCloner",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "v${BuildConfig.VERSION_NAME}",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    color = TitaniumMint.Mint400
-                                )
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            IconButton(onClick = onCycleTheme) {
-                                val (icon, desc) = when (themeMode) {
-                                    ThemeMode.AUTO -> Icons.Default.BrightnessAuto to "Auto Theme"
-                                    ThemeMode.DARK -> Icons.Default.Brightness4 to "Dark Theme"
-                                    ThemeMode.LIGHT -> Icons.Default.BrightnessHigh to "Light Theme"
-                                }
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = desc,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            TopAppBarOverflowMenu(
-                                isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
-                                onExportConfig = { viewModel.exportConfiguration(context) },
-                                onImportConfig = { importConfigLauncher.launch("application/json") },
-                                onOpenBatterySettings = { openBatterySettings() }
-                            )
-                        }
-                    }
-                }
-            }
+            CalClonerTopBar(
+                themeMode = themeMode,
+                isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
+                onCycleTheme = onCycleTheme,
+                onExportConfig = { viewModel.exportConfiguration(context) },
+                onImportConfig = { importConfigLauncher.launch("application/json") },
+                onOpenBatterySettings = { openBatterySettings() }
+            )
         },
         bottomBar = {
             AppBottomNavigationBar(

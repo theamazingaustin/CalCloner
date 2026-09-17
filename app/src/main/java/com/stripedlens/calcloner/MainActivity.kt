@@ -70,6 +70,7 @@ import com.stripedlens.calcloner.ui.components.AddEditSyncPairSheet
 import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.TopAppBarOverflowMenu
 import com.stripedlens.calcloner.ui.dialogs.BatteryOptimizationInfoDialog
+import com.stripedlens.calcloner.ui.dialogs.ConfigImportPreviewDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DisclaimerConsentDialog
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
@@ -306,6 +307,15 @@ fun CalendarSyncApp(
             onConfirmDelete = { deleteClonedEvents ->
                 viewModel.deletePair(pair, deleteClonedEvents)
             }
+        )
+    }
+
+    // Configuration Import Preview Dialog
+    uiState.importPreview?.let { preview ->
+        ConfigImportPreviewDialog(
+            previewState = preview,
+            onConfirmApply = { viewModel.applyImportPreview() },
+            onDismiss = { viewModel.dismissImportPreview() }
         )
     }
 

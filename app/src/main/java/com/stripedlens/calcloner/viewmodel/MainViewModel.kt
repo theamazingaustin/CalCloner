@@ -728,31 +728,146 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val importedPairs = SyncPair.listFromJsonString(jsonString)
-                if (importedPairs.isNotEmpty()) {
-                    val currentPairs = repo.syncPairsFlow.first().toMutableList()
-                    var addedCount = 0
-                    var updatedCount = 0
-                    for (imported in importedPairs) {
-                        val idx = currentPairs.indexOfFirst { it.id == imported.id }
-                        if (idx >= 0) {
-                            currentPairs[idx] = imported
-                            updatedCount++
-                        } else {
-                            currentPairs.add(imported)
-                            addedCount++
-                        }
-                    }
-                    repo.saveSyncPairs(currentPairs)
-                    _uiState.update {
-                        it.copy(userToastMessage = "Imported ${importedPairs.size} pair(s) ($addedCount new, $updatedCount updated)")
-                    }
-                } else {
+                if (importedPairs.isEmpty()) {
                     _uiState.update { it.copy(userToastMessage = "No valid sync pairs found in file") }
+                    return@launch
+                }
+
+                val available = _uiState.value.availableCalendars
+                val validated = importedPairs.map { pair ->
+                    validateAndRemapPair(pair, available)
+                }
+
+                _uiState.update {
+                    it.copy(importPreview = ImportPreviewState(pairs = validated))
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(userToastMessage = "Import failed: ${e.message}") }
             }
         }
+    }
+
+    private fun validateAndRemapPair(
+        pair: SyncPair,
+        available: List<CalendarInfo>
+    ): ValidatedImportPair {
+        val directFrom = available.find { it.id == pair.fromCalendarId }
+        val nameMatchedFrom = available.find { it.displayName.equals(pair.fromCalendarName, ignoreCase = true) }
+        val resolvedFrom = directFrom ?: nameMatchedFrom
+        val remappedFrom = directFrom == null && nameMatchedFrom != null
+
+        val directTo = available.find { it.id == pair.toCalendarId }
+        val nameMatchedTo = available.find { it.displayName.equals(pair.toCalendarName, ignoreCase = true) }
+        val resolvedTo = directTo ?: nameMatchedTo
+        val remappedTo = directTo == null && nameMatchedTo != null
+
+        return when {
+            resolvedFrom == null && resolvedTo == null -> {
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = pair,
+                    status = ImportPairStatus.UNRESOLVED,
+                    issueDescription = "Neither source '${pair.fromCalendarName}' nor target '${pair.toCalendarName}' found on this device"
+                )
+            }
+            resolvedFrom == null -> {
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = pair,
+                    status = ImportPairStatus.UNRESOLVED,
+                    issueDescription = "Source calendar '${pair.fromCalendarName}' not found on this device"
+                )
+            }
+            resolvedTo == null -> {
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = pair,
+                    status = ImportPairStatus.UNRESOLVED,
+                    issueDescription = "Target calendar '${pair.toCalendarName}' not found on this device"
+                )
+            }
+            !resolvedTo.canWrite -> {
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = pair,
+                    status = ImportPairStatus.UNRESOLVED,
+                    issueDescription = "Target calendar '${resolvedTo.displayName}' is read-only on this device"
+                )
+            }
+            remappedFrom || remappedTo -> {
+                val remappedPair = pair.copy(
+                    fromCalendarId = resolvedFrom.id,
+                    fromCalendarName = resolvedFrom.displayName,
+                    toCalendarId = resolvedTo.id,
+                    toCalendarName = resolvedTo.displayName
+                )
+                val msg = buildList {
+                    if (remappedFrom) add("Source remapped to '${resolvedFrom.displayName}' (ID: ${resolvedFrom.id})")
+                    if (remappedTo) add("Target remapped to '${resolvedTo.displayName}' (ID: ${resolvedTo.id})")
+                }.joinToString("; ")
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = remappedPair,
+                    status = ImportPairStatus.REMAPPED,
+                    remappedFrom = remappedFrom,
+                    remappedTo = remappedTo,
+                    issueDescription = msg
+                )
+            }
+            else -> {
+                ValidatedImportPair(
+                    originalPair = pair,
+                    resolvedPair = pair,
+                    status = ImportPairStatus.READY
+                )
+            }
+        }
+    }
+
+    fun applyImportPreview() {
+        val preview = _uiState.value.importPreview ?: return
+        viewModelScope.launch {
+            try {
+                val currentPairs = repo.syncPairsFlow.first().toMutableList()
+                var addedCount = 0
+                var updatedCount = 0
+                var remappedApplied = 0
+
+                val validItems = preview.pairs.filter { it.status != ImportPairStatus.UNRESOLVED }
+                for (item in validItems) {
+                    val resolved = item.resolvedPair
+                    val idx = currentPairs.indexOfFirst { it.id == resolved.id }
+                    if (idx >= 0) {
+                        currentPairs[idx] = resolved
+                        updatedCount++
+                    } else {
+                        currentPairs.add(resolved)
+                        addedCount++
+                    }
+                    if (item.status == ImportPairStatus.REMAPPED) {
+                        remappedApplied++
+                    }
+                }
+                repo.saveSyncPairs(currentPairs)
+                _uiState.update {
+                    it.copy(
+                        importPreview = null,
+                        userToastMessage = "Imported ${validItems.size} pair(s) ($addedCount new, $updatedCount updated${if (remappedApplied > 0) ", $remappedApplied remapped" else ""})"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        importPreview = null,
+                        userToastMessage = "Failed to apply import: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissImportPreview() {
+        _uiState.update { it.copy(importPreview = null) }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

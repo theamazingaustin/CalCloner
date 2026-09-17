@@ -58,7 +58,6 @@ fun BackgroundBatteryProtectionBanner(
     onOpenBatterySettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isSamsungDevice = remember { Build.MANUFACTURER.contains("samsung", ignoreCase = true) }
     var bannerDismissed by remember { mutableStateOf(false) }
 
     AnimatedVisibility(
@@ -96,7 +95,7 @@ fun BackgroundBatteryProtectionBanner(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = if (isSamsungDevice) "Samsung Background Protection" else "Background Sync Protection",
+                            text = "Background Sync Protection",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -118,11 +117,7 @@ fun BackgroundBatteryProtectionBanner(
                 }
 
                 Text(
-                    text = if (isSamsungDevice) {
-                        "Samsung One UI may put CalCloner into 'Deep Sleep' when unused, stopping automated background syncs. Set battery to 'Unrestricted' to prevent sleep."
-                    } else {
-                        "Android battery optimization may defer or pause CalCloner background syncs during sleep. Allow 'Unrestricted' battery to ensure continuous sync."
-                    },
+                    text = "Android battery optimization may defer or pause CalCloner background syncs when the device is idle. Allow 'Unrestricted' battery to ensure continuous, reliable sync.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp

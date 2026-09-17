@@ -84,13 +84,20 @@ fun AddEditSyncPairSheet(
     var daysPast by remember { mutableIntStateOf(pairToEdit?.daysPast ?: 30) }
     var daysFuture by remember { mutableIntStateOf(pairToEdit?.daysFuture ?: 30) }
 
-    // Selective Field Sync Toggles
+    // Selective Field Sync Toggles & Options
     var syncTitle by remember { mutableStateOf(pairToEdit?.syncTitle ?: true) }
     var customTitle by remember { mutableStateOf(pairToEdit?.customTitle ?: "") }
+    var titlePrefix by remember { mutableStateOf(pairToEdit?.titlePrefix ?: "") }
+    var titleSuffix by remember { mutableStateOf(pairToEdit?.titleSuffix ?: "") }
     var syncDescription by remember { mutableStateOf(pairToEdit?.syncDescription ?: true) }
+    var customDescription by remember { mutableStateOf(pairToEdit?.customDescription ?: "") }
+    var descriptionPrefix by remember { mutableStateOf(pairToEdit?.descriptionPrefix ?: "") }
+    var descriptionSuffix by remember { mutableStateOf(pairToEdit?.descriptionSuffix ?: "") }
     var syncLocation by remember { mutableStateOf(pairToEdit?.syncLocation ?: true) }
+    var customLocation by remember { mutableStateOf(pairToEdit?.customLocation ?: "") }
     var syncReminders by remember { mutableStateOf(pairToEdit?.syncReminders ?: true) }
     var syncAvailability by remember { mutableStateOf(pairToEdit?.syncAvailability ?: true) }
+    var customAvailability by remember { mutableStateOf(pairToEdit?.customAvailability) }
     var syncStatus by remember { mutableStateOf(pairToEdit?.syncStatus ?: true) }
 
     val context = LocalContext.current
@@ -102,8 +109,10 @@ fun AddEditSyncPairSheet(
     // Dirty state tracking for safe discard prompt
     val isDirty = remember(
         nickname, isEnabled, selectedFromCal, selectedToCal,
-        daysPast, daysFuture, syncTitle, customTitle, syncDescription,
-        syncLocation, syncReminders, syncAvailability, syncStatus, pairToEdit
+        daysPast, daysFuture, syncTitle, customTitle, titlePrefix, titleSuffix,
+        syncDescription, customDescription, descriptionPrefix, descriptionSuffix,
+        syncLocation, customLocation, syncReminders, syncAvailability,
+        customAvailability, syncStatus, pairToEdit
     ) {
         if (pairToEdit != null) {
             nickname != (pairToEdit.nickname ?: "") ||
@@ -114,10 +123,17 @@ fun AddEditSyncPairSheet(
             daysFuture != pairToEdit.daysFuture ||
             syncTitle != pairToEdit.syncTitle ||
             customTitle != (pairToEdit.customTitle ?: "") ||
+            titlePrefix != (pairToEdit.titlePrefix ?: "") ||
+            titleSuffix != (pairToEdit.titleSuffix ?: "") ||
             syncDescription != pairToEdit.syncDescription ||
+            customDescription != (pairToEdit.customDescription ?: "") ||
+            descriptionPrefix != (pairToEdit.descriptionPrefix ?: "") ||
+            descriptionSuffix != (pairToEdit.descriptionSuffix ?: "") ||
             syncLocation != pairToEdit.syncLocation ||
+            customLocation != (pairToEdit.customLocation ?: "") ||
             syncReminders != pairToEdit.syncReminders ||
             syncAvailability != pairToEdit.syncAvailability ||
+            customAvailability != pairToEdit.customAvailability ||
             syncStatus != pairToEdit.syncStatus
         } else {
             nickname.isNotBlank() ||
@@ -127,10 +143,17 @@ fun AddEditSyncPairSheet(
             daysFuture != 30 ||
             !syncTitle ||
             customTitle.isNotBlank() ||
+            titlePrefix.isNotBlank() ||
+            titleSuffix.isNotBlank() ||
             !syncDescription ||
+            customDescription.isNotBlank() ||
+            descriptionPrefix.isNotBlank() ||
+            descriptionSuffix.isNotBlank() ||
             !syncLocation ||
+            customLocation.isNotBlank() ||
             !syncReminders ||
             !syncAvailability ||
+            customAvailability != null ||
             !syncStatus
         }
     }
@@ -311,11 +334,19 @@ fun AddEditSyncPairSheet(
     val alreadyTargetPair = otherPairs.find { it.toCalendarId == toId }
     val sourceIsTargetPair = otherPairs.find { it.toCalendarId == fromId }
 
+    val fieldValidationError = if (!syncTitle && customTitle.isBlank()) {
+        "A title is required when event title mirroring is turned off."
+    } else null
+
+    val isConfigValidForSync = fieldValidationError == null
+
     val canSave = fromId != null &&
             toId != null &&
             !isSameCalendar &&
             !hasCycle &&
             (selectedToCal?.canWrite == true)
+
+    val canSync = canSave && isConfigValidForSync && !isSyncing
 
     fun buildUpdatedPair(): SyncPair {
         return (pairToEdit ?: SyncPair.createNew(
@@ -334,10 +365,17 @@ fun AddEditSyncPairSheet(
             daysFuture = daysFuture,
             syncTitle = syncTitle,
             customTitle = if (syncTitle) null else customTitle.trim().ifEmpty { null },
+            titlePrefix = if (syncTitle) titlePrefix.trim().ifEmpty { null } else null,
+            titleSuffix = if (syncTitle) titleSuffix.trim().ifEmpty { null } else null,
             syncDescription = syncDescription,
+            customDescription = if (!syncDescription) customDescription.trim().ifEmpty { null } else null,
+            descriptionPrefix = if (syncDescription) descriptionPrefix.trim().ifEmpty { null } else null,
+            descriptionSuffix = if (syncDescription) descriptionSuffix.trim().ifEmpty { null } else null,
             syncLocation = syncLocation,
+            customLocation = if (!syncLocation) customLocation.trim().ifEmpty { null } else null,
             syncReminders = syncReminders,
             syncAvailability = syncAvailability,
+            customAvailability = if (!syncAvailability) customAvailability else null,
             syncStatus = syncStatus
         )
     }
@@ -659,6 +697,16 @@ fun AddEditSyncPairSheet(
                         }
                     }
 
+                    if (fieldValidationError != null) {
+                        AlertBanner(
+                            icon = Icons.Default.Warning,
+                            title = "Sync Disabled: Field Option Incomplete",
+                            message = fieldValidationError,
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+
                     // Combined Telemetry Card
                     val currentPair = existingPairs.find { it.id == pairToEdit?.id } ?: pairToEdit
                     CombinedSyncTelemetryCard(
@@ -683,14 +731,28 @@ fun AddEditSyncPairSheet(
                         onSyncTitleChange = { syncTitle = it },
                         customTitle = customTitle,
                         onCustomTitleChange = { customTitle = it },
+                        titlePrefix = titlePrefix,
+                        onTitlePrefixChange = { titlePrefix = it },
+                        titleSuffix = titleSuffix,
+                        onTitleSuffixChange = { titleSuffix = it },
                         syncDescription = syncDescription,
                         onSyncDescriptionChange = { syncDescription = it },
+                        customDescription = customDescription,
+                        onCustomDescriptionChange = { customDescription = it },
+                        descriptionPrefix = descriptionPrefix,
+                        onDescriptionPrefixChange = { descriptionPrefix = it },
+                        descriptionSuffix = descriptionSuffix,
+                        onDescriptionSuffixChange = { descriptionSuffix = it },
                         syncLocation = syncLocation,
                         onSyncLocationChange = { syncLocation = it },
+                        customLocation = customLocation,
+                        onCustomLocationChange = { customLocation = it },
                         syncReminders = syncReminders,
                         onSyncRemindersChange = { syncReminders = it },
                         syncAvailability = syncAvailability,
                         onSyncAvailabilityChange = { syncAvailability = it },
+                        customAvailability = customAvailability,
+                        onCustomAvailabilityChange = { customAvailability = it },
                         syncStatus = syncStatus,
                         onSyncStatusChange = { syncStatus = it },
                         accentColor = themeAccentColor
@@ -798,7 +860,7 @@ fun AddEditSyncPairSheet(
 
                         // Right Side: SYNC
                         val syncSideBg = androidx.compose.ui.graphics.lerp(
-                            if (canSave) Color(0xFF064E3B) else Color(0xFF064E3B).copy(alpha = 0.25f),
+                            if (canSync) Color(0xFF064E3B) else Color(0xFF064E3B).copy(alpha = 0.25f),
                             TitaniumMint.Mint500.copy(alpha = 0.45f),
                             editSyncGlowAnim.value
                         )
@@ -810,8 +872,8 @@ fun AddEditSyncPairSheet(
                                 .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
                                 .scale(editSyncPulseAnim.value)
                                 .background(syncSideBg)
-                                .clickable(enabled = canSave && !isSyncing) {
-                                    if (canSave && !isSyncing) {
+                                .clickable(enabled = canSync) {
+                                    if (canSync) {
                                         val pair = buildUpdatedPair()
                                         if (onSaveAndSync != null) {
                                             onSaveAndSync(pair)
@@ -827,7 +889,7 @@ fun AddEditSyncPairSheet(
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = null,
-                                tint = if (canSave) TitaniumMint.Mint400 else TitaniumMint.Mint400.copy(alpha = 0.4f),
+                                tint = if (canSync) TitaniumMint.Mint400 else TitaniumMint.Mint400.copy(alpha = 0.35f),
                                 modifier = Modifier
                                     .size(18.dp)
                                     .rotate(if (isSyncing) sheetSpinAngle else 0f)
@@ -845,7 +907,7 @@ fun AddEditSyncPairSheet(
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = if (canSave) TitaniumMint.Mint400 else TitaniumMint.Mint400.copy(alpha = 0.4f)
+                                    color = if (canSync) TitaniumMint.Mint400 else TitaniumMint.Mint400.copy(alpha = 0.35f)
                                 )
                             }
                         }

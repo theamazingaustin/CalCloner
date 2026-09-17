@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -86,6 +87,47 @@ fun SyncScreen(
                 isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
                 onOpenBatterySettings = onOpenBatterySettings
             )
+
+            // Field Configuration Issues Banner
+            val invalidConfigPairs = uiState.syncPairs.filter { !it.isConfigValidForSync }
+            AnimatedVisibility(
+                visible = invalidConfigPairs.isNotEmpty(),
+                enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+                exit = fadeOut(tween(150)) + shrinkVertically(tween(200))
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Field issue alert",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sync Disabled: Field Option Incomplete",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            val pairNames = invalidConfigPairs.joinToString(", ") { "'${it.displayName}'" }
+                            Text(
+                                text = "Field configuration incomplete for $pairNames. Open settings and provide required field values to resume sync.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
 
             // Calendar Permission Alert Banner
             AnimatedVisibility(

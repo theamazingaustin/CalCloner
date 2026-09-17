@@ -248,6 +248,7 @@ fun SyncPairCard(
                 fromCalendar == null -> "Source calendar not found on device"
                 toCalendar == null -> "Target calendar not found on device"
                 !toCalendar.canWrite -> "Target calendar is read-only"
+                pair.fieldValidationError != null -> "Field configuration error: ${pair.fieldValidationError}"
                 pair.hasSyncError -> pair.lastSyncStatus ?: "Sync failed"
                 else -> null
             }
@@ -354,7 +355,7 @@ fun SyncPairCard(
                         modifier = Modifier
                             .defaultMinSize(minWidth = 114.dp)
                             .clickable(
-                                enabled = pair.isEnabled && !isSyncing && isTargetAccessible,
+                                enabled = pair.isEnabled && !isSyncing && isTargetAccessible && pair.isConfigValidForSync,
                                 onClick = onSyncNow
                             )
                     ) {
@@ -366,7 +367,7 @@ fun SyncPairCard(
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Sync",
-                                tint = if (pair.isEnabled && isTargetAccessible) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                tint = if (pair.isEnabled && isTargetAccessible && pair.isConfigValidForSync) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 modifier = Modifier
                                     .size(14.dp)
                                     .rotate(if (isSyncing) spinAngle else 0f)

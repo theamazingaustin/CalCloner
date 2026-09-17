@@ -220,6 +220,24 @@ object CalendarSyncEngine {
     }
 
     /**
+     * Standard deletion of all events in target calendar using tombstones.
+     */
+    suspend fun clearAllCalendarEvents(
+        context: Context,
+        toCalendarId: Long,
+        fromCalendarId: Long? = null,
+        onProgress: ((message: String) -> Unit)? = null
+    ): Int = syncMutex.withLock {
+        CalendarMaintenance.clearAllCalendarEvents(
+            context = context,
+            toCalendarId = toCalendarId,
+            fromCalendarId = fromCalendarId,
+            onProgress = onProgress,
+            onSelfWrite = { recordSelfWrite() }
+        )
+    }
+
+    /**
      * Complete Wipe of Target Calendar with 3-step cloud download and batch wipe.
      */
     suspend fun deleteAllCalendarEvents(

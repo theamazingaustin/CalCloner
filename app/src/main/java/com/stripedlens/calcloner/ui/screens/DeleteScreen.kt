@@ -178,7 +178,7 @@ fun DeleteScreen(
                     letterSpacing = 0.5.sp
                 )
 
-                // Option A: Purge Cloned Events Only
+                // Option A: Purge Cloned Events Only (Default)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = if (uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
@@ -209,12 +209,30 @@ fun DeleteScreen(
                             colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Mint400)
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "Purge Cloned Events Only",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Purge Cloned Events Only",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = TitaniumMint.Mint500.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "DEFAULT · SAFE",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TitaniumMint.Mint400,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             Text(
                                 text = "Removes only events created and tagged by CalCloner. Organic and manually created events in this calendar are kept safe.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -225,7 +243,72 @@ fun DeleteScreen(
                     }
                 }
 
-                // Option B: Wipe All Events
+                // Option B: Clear All Events (Standard Tombstones)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
+                        TitaniumMint.Amber500.copy(alpha = 0.08f)
+                    } else {
+                        MaterialTheme.colorScheme.background
+                    },
+                    border = BorderStroke(
+                        1.dp,
+                        if (uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
+                            TitaniumMint.Amber500.copy(alpha = 0.5f)
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOperationTypeSelected(DeleteOperationType.CLEAR_ALL) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        RadioButton(
+                            selected = uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL,
+                            onClick = { onOperationTypeSelected(DeleteOperationType.CLEAR_ALL) },
+                            colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Amber400)
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Clear All Calendar Events",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TitaniumMint.Amber400
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = TitaniumMint.Amber500.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "ALL EVENTS",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TitaniumMint.Amber400,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Deletes all events (organic and cloned) currently in this calendar using standard Android tombstones for cloud sync.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+
+                // Option C: Deep Clean & Cloud Wipe (Multi-step)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = if (uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
@@ -261,7 +344,7 @@ fun DeleteScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "Wipe All Events",
+                                    text = "Deep Clean & Cloud Wipe",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = TitaniumMint.Rose400
@@ -271,7 +354,7 @@ fun DeleteScreen(
                                     color = TitaniumMint.Rose500.copy(alpha = 0.2f)
                                 ) {
                                     Text(
-                                        text = "DESTRUCTIVE",
+                                        text = "DEEP WIPE · DESTRUCTIVE",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
@@ -281,7 +364,7 @@ fun DeleteScreen(
                                 }
                             }
                             Text(
-                                text = "Deletes 100% of all events from this calendar, including manually created events. Preserves cloud tombstones so deletions sync to remote servers.",
+                                text = "Forces Google Cloud download to catch remote orphans, erases 100% of events locally, and forces an expedited cloud sync override.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 16.sp
@@ -418,7 +501,8 @@ fun DeleteScreen(
                             Text(
                                 text = when (uiState.deleteOperationType) {
                                     DeleteOperationType.PURGE_CLONED -> "Purge Cloned Events"
-                                    DeleteOperationType.WIPE_ALL -> "Permanently Delete All Events"
+                                    DeleteOperationType.CLEAR_ALL -> "Clear All Calendar Events"
+                                    DeleteOperationType.WIPE_ALL -> "Deep Clean & Cloud Wipe"
                                 },
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,

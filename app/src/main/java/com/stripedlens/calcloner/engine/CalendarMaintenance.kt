@@ -187,7 +187,111 @@ object CalendarMaintenance {
     }
 
     /**
-     * Complete Nuke of Target Calendar:
+     * Standard deletion of all events in the target calendar.
+     * Uses ContentProvider batch deletes to create standard DELETED=1, DIRTY=1 tombstones,
+     * triggering standard Android sync to delete events on the cloud.
+     */
+    suspend fun clearAllCalendarEvents(
+        context: Context,
+        toCalendarId: Long,
+        fromCalendarId: Long? = null,
+        onProgress: ((message: String) -> Unit)? = null,
+        onSelfWrite: (() -> Unit)? = null
+    ): Int {
+        if (fromCalendarId != null) {
+            require(toCalendarId != fromCalendarId) {
+                "CRITICAL SAFETY VIOLATION: Cannot clear calendar because target calendar ($toCalendarId) matches source calendar ($fromCalendarId)!"
+            }
+        }
+
+        onProgress?.invoke("Clearing all events from calendar...")
+
+        var targetAccountName: String? = null
+        var targetAccountType: String? = null
+        val calCursor = context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            arrayOf(CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.ACCOUNT_TYPE),
+            "${CalendarContract.Calendars._ID} = ?",
+            arrayOf(toCalendarId.toString()),
+            null
+        )
+        calCursor?.use {
+            if (it.moveToFirst()) {
+                targetAccountName = it.getString(0)
+                targetAccountType = it.getString(1)
+            }
+        }
+
+        val eventIds = mutableListOf<Long>()
+        val queryCursor = context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            arrayOf(CalendarContract.Events._ID),
+            "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0",
+            arrayOf(toCalendarId.toString()),
+            null
+        )
+        queryCursor?.use {
+            val idCol = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
+            while (it.moveToNext()) {
+                eventIds.add(it.getLong(idCol))
+            }
+        }
+
+        if (eventIds.isEmpty()) {
+            onProgress?.invoke("Calendar is already empty (0 events).")
+            return 0
+        }
+
+        var deletedCount = 0
+        eventIds.chunked(200).forEach { chunk ->
+            val ops = ArrayList<ContentProviderOperation>()
+            for (id in chunk) {
+                val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
+                ops.add(ContentProviderOperation.newDelete(eventUri).build())
+            }
+            try {
+                val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
+                deletedCount += results.sumOf { (it.count ?: 0).toInt() }
+            } catch (_: Exception) {
+                for (id in chunk) {
+                    try {
+                        val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
+                        val rows = context.contentResolver.delete(eventUri, null, null)
+                        if (rows > 0) deletedCount++
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
+        if (deletedCount > 0) {
+            onSelfWrite?.invoke()
+        }
+
+        try {
+            context.contentResolver.notifyChange(CalendarContract.Events.CONTENT_URI, null)
+            context.contentResolver.notifyChange(CalendarContract.Instances.CONTENT_URI, null)
+            context.contentResolver.notifyChange(CalendarContract.Calendars.CONTENT_URI, null)
+            context.sendBroadcast(android.content.Intent(android.content.Intent.ACTION_PROVIDER_CHANGED, CalendarContract.CONTENT_URI))
+            context.sendBroadcast(android.content.Intent("com.google.android.calendar.SYNC_TRIGGER"))
+        } catch (_: Exception) {}
+
+        if (!targetAccountName.isNullOrEmpty() && !targetAccountType.isNullOrEmpty()) {
+            try {
+                val account = Account(targetAccountName, targetAccountType)
+                val syncBundle = Bundle().apply {
+                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_MANUAL, true)
+                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_UPLOAD, true)
+                }
+                android.content.ContentResolver.requestSync(account, CalendarContract.AUTHORITY, syncBundle)
+            } catch (_: Exception) {}
+        }
+
+        onProgress?.invoke("Successfully cleared $deletedCount events from calendar.")
+        return deletedCount
+    }
+
+    /**
+     * Complete Wipe of Target Calendar:
      * 1. Rejects execution if toCalendarId == fromCalendarId.
      * 2. Toggles sync_events 0 -> 1 on target calendar in CalendarContract.Calendars, forcing Google Cloud
      *    to immediately download all remote/orphaned events into the local database.

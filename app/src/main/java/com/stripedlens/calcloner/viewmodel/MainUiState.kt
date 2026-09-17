@@ -10,6 +10,7 @@ enum class AppTab {
 
 enum class DeleteOperationType {
     PURGE_CLONED,
+    CLEAR_ALL,
     WIPE_ALL
 }
 
@@ -43,6 +44,7 @@ data class MainUiState(
     val isSyncingAll: Boolean = false,
     val syncingPairId: String? = null,
     val isPurgingCloned: Boolean = false,
+    val isClearingAll: Boolean = false,
     val isWipingAll: Boolean = false,
     val operationDone: Boolean = false,
     val progressFraction: Float = 0f,

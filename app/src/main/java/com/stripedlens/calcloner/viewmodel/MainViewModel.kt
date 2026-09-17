@@ -476,7 +476,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         when (type) {
             DeleteOperationType.PURGE_CLONED -> executePurgeClonedEvents(calendar)
+            DeleteOperationType.CLEAR_ALL -> executeClearAllEvents(calendar)
             DeleteOperationType.WIPE_ALL -> executeWipeAllEvents(calendar)
+        }
+    }
+
+    private fun executeClearAllEvents(calendar: CalendarInfo) {
+        _uiState.update {
+            it.copy(
+                isOperating = true,
+                isClearingAll = true,
+                operationDone = false,
+                progressFraction = 0f,
+                progressStatusText = "Clearing all events from '${calendar.displayName}'...",
+                deleteConfirmationText = ""
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val deleted = withContext(Dispatchers.IO) {
+                    CalendarSyncEngine.clearAllCalendarEvents(
+                        context = context,
+                        toCalendarId = calendar.id,
+                        fromCalendarId = null,
+                        onProgress = { msg ->
+                            _uiState.update { it.copy(progressStatusText = msg) }
+                        }
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        operationDone = true,
+                        progressStatusText = if (deleted > 0) {
+                            "Clear complete: $deleted event(s) removed from '${calendar.displayName}'."
+                        } else {
+                            "Calendar '${calendar.displayName}' is already empty (0 deleted)."
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(progressStatusText = "Clear failed: ${e.message}") }
+            } finally {
+                _uiState.update {
+                    it.copy(
+                        isOperating = false,
+                        isClearingAll = false
+                    )
+                }
+                refreshCalendars()
+            }
         }
     }
 

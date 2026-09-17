@@ -19,6 +19,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "../calcloner-release.jks"
+            val keystoreFile = file(keystorePath)
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASS") ?: "calcloner123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "calcloner"
+                keyPassword = System.getenv("KEY_PASS") ?: "calcloner123"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".beta"
@@ -26,6 +39,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

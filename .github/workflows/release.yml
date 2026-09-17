@@ -30,13 +30,24 @@ jobs:
       - name: Grant Gradle execute permission
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Decode Keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > calcloner-release.jks
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_PATH: "../calcloner-release.jks"
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASS }}
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK to release tag name
         run: |
           TAG="${GITHUB_REF_NAME}"
-          cp app/build/outputs/apk/debug/app-debug.apk "CalCloner-${TAG}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "CalCloner-${TAG}.apk"
 
       - name: Create GitHub Release and upload APK
         uses: softprops/action-gh-release@v2

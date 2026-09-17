@@ -35,6 +35,7 @@ import com.stripedlens.calcloner.ui.components.BackgroundBatteryProtectionBanner
 import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.components.sheets.PairDeleteSection
+import com.stripedlens.calcloner.ui.components.sheets.SyncConditionsCard
 import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
 import com.stripedlens.calcloner.ui.components.sheets.SyncPairErrorBanner
 import com.stripedlens.calcloner.ui.components.sheets.SyncPairNicknameField
@@ -672,6 +673,9 @@ fun AddEditSyncPairSheet(
                         onDaysPastChange = { daysPast = it },
                         onDaysFutureChange = { daysFuture = it }
                     )
+
+                    // Sync Conditions & Filters Preview Card (Coming Soon)
+                    SyncConditionsCard()
 
                     // Selective Field Sync Options Card
                     SyncFieldOptionsCard(

@@ -162,4 +162,96 @@ class SyncPairTest {
         assertEquals("", legacyCloneMatch!!.groupValues[1])
         assertEquals("105", legacyCloneMatch.groupValues[2])
     }
+
+    @Test
+    fun testGranularFieldCustomizationSerialization() {
+        val pair = SyncPair(
+            id = "pair-custom",
+            fromCalendarId = 1L,
+            fromCalendarName = "Personal",
+            toCalendarId = 2L,
+            toCalendarName = "Work",
+            syncTitle = true,
+            titlePrefix = "[Home] ",
+            titleSuffix = " (Private)",
+            syncDescription = false,
+            customDescription = "Managed calendar entry",
+            descriptionPrefix = "Details:\n",
+            descriptionSuffix = "\nStrictly confidential",
+            syncLocation = false,
+            customLocation = "Remote / Home Office",
+            syncReminders = true,
+            syncAvailability = false,
+            customAvailability = 1, // AVAILABILITY_BUSY
+            syncStatus = true
+        )
+
+        val json = pair.toJson().toString()
+        val restored = SyncPair.fromJson(org.json.JSONObject(json))
+
+        assertEquals("pair-custom", restored.id)
+        assertTrue(restored.syncTitle)
+        assertEquals("[Home] ", restored.titlePrefix)
+        assertEquals(" (Private)", restored.titleSuffix)
+        assertFalse(restored.syncDescription)
+        assertEquals("Managed calendar entry", restored.customDescription)
+        assertEquals("Details:\n", restored.descriptionPrefix)
+        assertEquals("\nStrictly confidential", restored.descriptionSuffix)
+        assertFalse(restored.syncLocation)
+        assertEquals("Remote / Home Office", restored.customLocation)
+        assertTrue(restored.syncReminders)
+        assertFalse(restored.syncAvailability)
+        assertEquals(1, restored.customAvailability)
+        assertTrue(restored.syncStatus)
+    }
+
+    @Test
+    fun testFieldValidationError() {
+        // Valid default configuration
+        val validPair = SyncPair(
+            id = "p1",
+            fromCalendarId = 1L,
+            fromCalendarName = "A",
+            toCalendarId = 2L,
+            toCalendarName = "B",
+            syncTitle = true
+        )
+        assertNull(validPair.fieldValidationError)
+        assertTrue(validPair.isConfigValidForSync)
+        assertFalse(validPair.hasSyncError)
+
+        // Invalid: Title mirroring turned off without a fallback custom title
+        val invalidPairEmptyTitle = validPair.copy(
+            syncTitle = false,
+            customTitle = ""
+        )
+        assertNotNull(invalidPairEmptyTitle.fieldValidationError)
+        assertFalse(invalidPairEmptyTitle.isConfigValidForSync)
+        assertTrue(invalidPairEmptyTitle.hasSyncError)
+
+        val invalidPairBlankTitle = validPair.copy(
+            syncTitle = false,
+            customTitle = "   "
+        )
+        assertNotNull(invalidPairBlankTitle.fieldValidationError)
+        assertFalse(invalidPairBlankTitle.isConfigValidForSync)
+        assertTrue(invalidPairBlankTitle.hasSyncError)
+
+        val invalidPairNullTitle = validPair.copy(
+            syncTitle = false,
+            customTitle = null
+        )
+        assertNotNull(invalidPairNullTitle.fieldValidationError)
+        assertFalse(invalidPairNullTitle.isConfigValidForSync)
+        assertTrue(invalidPairNullTitle.hasSyncError)
+
+        // Fixed: Title mirroring turned off but custom title provided
+        val fixedPair = validPair.copy(
+            syncTitle = false,
+            customTitle = "Busy"
+        )
+        assertNull(fixedPair.fieldValidationError)
+        assertTrue(fixedPair.isConfigValidForSync)
+        assertFalse(fixedPair.hasSyncError)
+    }
 }

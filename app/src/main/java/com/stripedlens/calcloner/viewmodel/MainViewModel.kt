@@ -176,6 +176,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val totalPairs = enabledPairs.size
                 enabledPairs.forEachIndexed { index, pair ->
+                    if (!pair.isConfigValidForSync) {
+                        val validationMsg = "Sync blocked: ${pair.fieldValidationError}"
+                        repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), validationMsg)
+                        anyError = true
+                        return@forEachIndexed
+                    }
+
                     _uiState.update {
                         it.copy(
                             syncingPairId = pair.id,
@@ -196,10 +203,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 pairId = pair.id,
                                 syncTitle = pair.syncTitle,
                                 customTitle = pair.customTitle,
+                                titlePrefix = pair.titlePrefix,
+                                titleSuffix = pair.titleSuffix,
                                 syncDescription = pair.syncDescription,
+                                customDescription = pair.customDescription,
+                                descriptionPrefix = pair.descriptionPrefix,
+                                descriptionSuffix = pair.descriptionSuffix,
                                 syncLocation = pair.syncLocation,
+                                customLocation = pair.customLocation,
                                 syncReminders = pair.syncReminders,
                                 syncAvailability = pair.syncAvailability,
+                                customAvailability = pair.customAvailability,
                                 syncStatus = pair.syncStatus,
                                 activePairIds = state.syncPairs.map { it.id }.toSet(),
                                 onProgress = { cur, tot, msg ->
@@ -275,6 +289,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         if (state.isOperating) return
 
+        if (!pair.isConfigValidForSync) {
+            _uiState.update { it.copy(userToastMessage = "Cannot sync: ${pair.fieldValidationError}") }
+            return
+        }
+
         _uiState.update {
             it.copy(
                 isOperating = true,
@@ -299,10 +318,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         pairId = pair.id,
                         syncTitle = pair.syncTitle,
                         customTitle = pair.customTitle,
+                        titlePrefix = pair.titlePrefix,
+                        titleSuffix = pair.titleSuffix,
                         syncDescription = pair.syncDescription,
+                        customDescription = pair.customDescription,
+                        descriptionPrefix = pair.descriptionPrefix,
+                        descriptionSuffix = pair.descriptionSuffix,
                         syncLocation = pair.syncLocation,
+                        customLocation = pair.customLocation,
                         syncReminders = pair.syncReminders,
                         syncAvailability = pair.syncAvailability,
+                        customAvailability = pair.customAvailability,
                         syncStatus = pair.syncStatus,
                         activePairIds = state.syncPairs.map { it.id }.toSet(),
                         onProgress = { cur, tot, msg ->

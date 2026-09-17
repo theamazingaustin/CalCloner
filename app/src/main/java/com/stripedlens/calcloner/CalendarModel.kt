@@ -57,10 +57,17 @@ data class SyncPair(
     val isEnabled: Boolean = true,
     val syncTitle: Boolean = true,
     val customTitle: String? = null,
+    val titlePrefix: String? = null,
+    val titleSuffix: String? = null,
     val syncDescription: Boolean = true,
+    val customDescription: String? = null,
+    val descriptionPrefix: String? = null,
+    val descriptionSuffix: String? = null,
     val syncLocation: Boolean = true,
+    val customLocation: String? = null,
     val syncReminders: Boolean = true,
     val syncAvailability: Boolean = true,
+    val customAvailability: Int? = null,
     val syncStatus: Boolean = true,
     val lastSyncTime: Long? = null,
     val lastSyncStatus: String? = null,
@@ -71,7 +78,17 @@ data class SyncPair(
 ) {
     val displayName: String get() = nickname?.takeIf { it.isNotBlank() } ?: "$fromCalendarName → $toCalendarName"
 
+    val fieldValidationError: String? get() {
+        if (!syncTitle && customTitle.isNullOrBlank()) {
+            return "A title is required when event title mirroring is turned off."
+        }
+        return null
+    }
+
+    val isConfigValidForSync: Boolean get() = fieldValidationError == null
+
     val hasSyncError: Boolean get() {
+        if (fieldValidationError != null) return true
         val status = lastSyncStatus ?: return false
         return status.contains("fail", ignoreCase = true) ||
                status.contains("error", ignoreCase = true) ||
@@ -91,10 +108,17 @@ data class SyncPair(
         put("isEnabled", isEnabled)
         put("syncTitle", syncTitle)
         if (!customTitle.isNullOrEmpty()) put("customTitle", customTitle)
+        if (!titlePrefix.isNullOrEmpty()) put("titlePrefix", titlePrefix)
+        if (!titleSuffix.isNullOrEmpty()) put("titleSuffix", titleSuffix)
         put("syncDescription", syncDescription)
+        if (!customDescription.isNullOrEmpty()) put("customDescription", customDescription)
+        if (!descriptionPrefix.isNullOrEmpty()) put("descriptionPrefix", descriptionPrefix)
+        if (!descriptionSuffix.isNullOrEmpty()) put("descriptionSuffix", descriptionSuffix)
         put("syncLocation", syncLocation)
+        if (!customLocation.isNullOrEmpty()) put("customLocation", customLocation)
         put("syncReminders", syncReminders)
         put("syncAvailability", syncAvailability)
+        if (customAvailability != null) put("customAvailability", customAvailability)
         put("syncStatus", syncStatus)
         if (lastSyncTime != null) put("lastSyncTime", lastSyncTime)
         if (lastSyncStatus != null) put("lastSyncStatus", lastSyncStatus)
@@ -116,10 +140,17 @@ data class SyncPair(
             isEnabled: Boolean = true,
             syncTitle: Boolean = true,
             customTitle: String? = null,
+            titlePrefix: String? = null,
+            titleSuffix: String? = null,
             syncDescription: Boolean = true,
+            customDescription: String? = null,
+            descriptionPrefix: String? = null,
+            descriptionSuffix: String? = null,
             syncLocation: Boolean = true,
+            customLocation: String? = null,
             syncReminders: Boolean = true,
             syncAvailability: Boolean = true,
+            customAvailability: Int? = null,
             syncStatus: Boolean = true
         ): SyncPair = SyncPair(
             id = java.util.UUID.randomUUID().toString(),
@@ -133,10 +164,17 @@ data class SyncPair(
             isEnabled = isEnabled,
             syncTitle = syncTitle,
             customTitle = customTitle,
+            titlePrefix = titlePrefix,
+            titleSuffix = titleSuffix,
             syncDescription = syncDescription,
+            customDescription = customDescription,
+            descriptionPrefix = descriptionPrefix,
+            descriptionSuffix = descriptionSuffix,
             syncLocation = syncLocation,
+            customLocation = customLocation,
             syncReminders = syncReminders,
             syncAvailability = syncAvailability,
+            customAvailability = customAvailability,
             syncStatus = syncStatus
         )
 
@@ -152,10 +190,17 @@ data class SyncPair(
             isEnabled = json.optBoolean("isEnabled", true),
             syncTitle = json.optBoolean("syncTitle", true),
             customTitle = if (json.has("customTitle") && !json.isNull("customTitle")) json.getString("customTitle") else null,
+            titlePrefix = if (json.has("titlePrefix") && !json.isNull("titlePrefix")) json.getString("titlePrefix") else null,
+            titleSuffix = if (json.has("titleSuffix") && !json.isNull("titleSuffix")) json.getString("titleSuffix") else null,
             syncDescription = json.optBoolean("syncDescription", true),
+            customDescription = if (json.has("customDescription") && !json.isNull("customDescription")) json.getString("customDescription") else null,
+            descriptionPrefix = if (json.has("descriptionPrefix") && !json.isNull("descriptionPrefix")) json.getString("descriptionPrefix") else null,
+            descriptionSuffix = if (json.has("descriptionSuffix") && !json.isNull("descriptionSuffix")) json.getString("descriptionSuffix") else null,
             syncLocation = json.optBoolean("syncLocation", true),
+            customLocation = if (json.has("customLocation") && !json.isNull("customLocation")) json.getString("customLocation") else null,
             syncReminders = json.optBoolean("syncReminders", true),
             syncAvailability = json.optBoolean("syncAvailability", true),
+            customAvailability = if (json.has("customAvailability") && !json.isNull("customAvailability")) json.getInt("customAvailability") else null,
             syncStatus = json.optBoolean("syncStatus", true),
             lastSyncTime = if (json.has("lastSyncTime") && !json.isNull("lastSyncTime")) json.getLong("lastSyncTime") else null,
             lastSyncStatus = if (json.has("lastSyncStatus") && !json.isNull("lastSyncStatus")) json.getString("lastSyncStatus") else null,

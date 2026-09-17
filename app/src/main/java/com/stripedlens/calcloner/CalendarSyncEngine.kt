@@ -102,10 +102,17 @@ object CalendarSyncEngine {
         pairId: String? = null,
         syncTitle: Boolean = true,
         customTitle: String? = null,
+        titlePrefix: String? = null,
+        titleSuffix: String? = null,
         syncDescription: Boolean = true,
+        customDescription: String? = null,
+        descriptionPrefix: String? = null,
+        descriptionSuffix: String? = null,
         syncLocation: Boolean = true,
+        customLocation: String? = null,
         syncReminders: Boolean = true,
         syncAvailability: Boolean = true,
+        customAvailability: Int? = null,
         syncStatus: Boolean = true,
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
@@ -119,10 +126,17 @@ object CalendarSyncEngine {
             pairId = pairId,
             syncTitle = syncTitle,
             customTitle = customTitle,
+            titlePrefix = titlePrefix,
+            titleSuffix = titleSuffix,
             syncDescription = syncDescription,
+            customDescription = customDescription,
+            descriptionPrefix = descriptionPrefix,
+            descriptionSuffix = descriptionSuffix,
             syncLocation = syncLocation,
+            customLocation = customLocation,
             syncReminders = syncReminders,
             syncAvailability = syncAvailability,
+            customAvailability = customAvailability,
             syncStatus = syncStatus,
             activePairIds = activePairIds,
             onProgress = onProgress,
@@ -145,6 +159,12 @@ object CalendarSyncEngine {
         val activePairIds = pairs.map { it.id }.toSet()
 
         enabledPairs.forEachIndexed { index, pair ->
+            if (!pair.isConfigValidForSync) {
+                val validationMsg = "Sync blocked: ${pair.fieldValidationError}"
+                repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), validationMsg)
+                onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, validationMsg)
+                return@forEachIndexed
+            }
             val startTime = System.currentTimeMillis()
             try {
                 onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, "Syncing: ${pair.displayName}...")
@@ -157,10 +177,17 @@ object CalendarSyncEngine {
                     pairId = pair.id,
                     syncTitle = pair.syncTitle,
                     customTitle = pair.customTitle,
+                    titlePrefix = pair.titlePrefix,
+                    titleSuffix = pair.titleSuffix,
                     syncDescription = pair.syncDescription,
+                    customDescription = pair.customDescription,
+                    descriptionPrefix = pair.descriptionPrefix,
+                    descriptionSuffix = pair.descriptionSuffix,
                     syncLocation = pair.syncLocation,
+                    customLocation = pair.customLocation,
                     syncReminders = pair.syncReminders,
                     syncAvailability = pair.syncAvailability,
+                    customAvailability = pair.customAvailability,
                     syncStatus = pair.syncStatus,
                     activePairIds = activePairIds,
                     onProgress = { _, _, msg ->

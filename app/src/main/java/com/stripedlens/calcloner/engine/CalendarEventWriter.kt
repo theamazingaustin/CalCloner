@@ -182,37 +182,72 @@ object CalendarEventWriter {
         pairId: String? = null,
         syncTitle: Boolean = true,
         customTitle: String? = null,
+        titlePrefix: String? = null,
+        titleSuffix: String? = null,
         syncDescription: Boolean = true,
+        customDescription: String? = null,
+        descriptionPrefix: String? = null,
+        descriptionSuffix: String? = null,
         syncLocation: Boolean = true,
+        customLocation: String? = null,
         syncAvailability: Boolean = true,
+        customAvailability: Int? = null,
         syncStatus: Boolean = true
     ): ContentValues {
         return ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, toCalendarId)
             val titleToUse = if (syncTitle) {
-                event.title ?: ""
+                val base = event.title ?: ""
+                val pre = titlePrefix ?: ""
+                val suf = titleSuffix ?: ""
+                "$pre$base$suf"
             } else {
                 val sanitized = customTitle?.trim()?.replace(Regex("[\\p{Cntrl}&&[^\r\n\t]]"), "")
-                if (sanitized.isNullOrEmpty()) "-" else sanitized.take(100)
+                if (sanitized.isNullOrEmpty()) "Busy" else sanitized.take(100)
             }
             put(CalendarContract.Events.TITLE, titleToUse)
-            put(CalendarContract.Events.EVENT_LOCATION, if (syncLocation) (event.location ?: "") else "")
+            val locationToUse = if (syncLocation) {
+                event.location ?: ""
+            } else {
+                customLocation?.trim() ?: ""
+            }
+            put(CalendarContract.Events.EVENT_LOCATION, locationToUse)
 
             // Description Tracking Tag: Append [CalCloner-ID: <pairId>:<id>] for cross-cloud persistence
             val trackingTag = if (pairId != null) "[CalCloner-ID: ${pairId}:${event.id}]" else "[CalCloner-ID: ${event.id}]"
             val fullDescription = if (syncDescription) {
+                val baseDesc = event.description ?: ""
+                val pre = if (!descriptionPrefix.isNullOrEmpty()) "${descriptionPrefix}\n" else ""
+                val suf = if (!descriptionSuffix.isNullOrEmpty()) "\n${descriptionSuffix}" else ""
+                val content = if (baseDesc.isNotEmpty()) {
+                    "$pre$baseDesc$suf"
+                } else if (pre.isNotEmpty() || suf.isNotEmpty()) {
+                    "$pre$suf".trim()
+                } else {
+                    ""
+                }
                 when {
-                    event.description.isNullOrEmpty() -> trackingTag
-                    event.description.contains("[CalCloner-ID:") -> {
-                        event.description.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
+                    content.isEmpty() -> trackingTag
+                    content.contains("[CalCloner-ID:") -> {
+                        content.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
                     }
-                    event.description.contains("[CalClone-ID:") -> {
-                        event.description.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
+                    content.contains("[CalClone-ID:") -> {
+                        content.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
                     }
-                    else -> "${event.description}\n\n$trackingTag"
+                    else -> "$content\n\n$trackingTag"
                 }
             } else {
-                trackingTag
+                val fixed = customDescription?.trim()
+                when {
+                    fixed.isNullOrEmpty() -> trackingTag
+                    fixed.contains("[CalCloner-ID:") -> {
+                        fixed.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
+                    }
+                    fixed.contains("[CalClone-ID:") -> {
+                        fixed.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
+                    }
+                    else -> "$fixed\n\n$trackingTag"
+                }
             }
             put(CalendarContract.Events.DESCRIPTION, fullDescription)
 
@@ -282,7 +317,11 @@ object CalendarEventWriter {
 
             val eventStatus = if (syncStatus) (event.status ?: CalendarContract.Events.STATUS_CONFIRMED) else CalendarContract.Events.STATUS_CONFIRMED
             put(CalendarContract.Events.STATUS, eventStatus)
-            val eventAvailability = if (syncAvailability) (event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY) else CalendarContract.Events.AVAILABILITY_BUSY
+            val eventAvailability = if (syncAvailability) {
+                event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY
+            } else {
+                customAvailability ?: CalendarContract.Events.AVAILABILITY_BUSY
+            }
             put(CalendarContract.Events.AVAILABILITY, eventAvailability)
             put(CalendarContract.Events.HAS_ALARM, if (event.reminders.isNotEmpty()) 1 else 0)
             put(CalendarContract.Events.CUSTOM_APP_PACKAGE, context.packageName)
@@ -314,10 +353,17 @@ object CalendarEventWriter {
         pairId: String? = null,
         syncTitle: Boolean = true,
         customTitle: String? = null,
+        titlePrefix: String? = null,
+        titleSuffix: String? = null,
         syncDescription: Boolean = true,
+        customDescription: String? = null,
+        descriptionPrefix: String? = null,
+        descriptionSuffix: String? = null,
         syncLocation: Boolean = true,
+        customLocation: String? = null,
         syncReminders: Boolean = true,
         syncAvailability: Boolean = true,
+        customAvailability: Int? = null,
         syncStatus: Boolean = true,
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
@@ -566,9 +612,26 @@ object CalendarEventWriter {
 
         fun syncSingleEvent(event: SyncEvent, targetParentId: Long?) {
             val values = buildEventValues(
-                context, event, toCalendarId, uriPrefix, defaultTimeZone, targetParentId, pairId,
-                syncTitle, customTitle,
-                syncDescription, syncLocation, syncAvailability, syncStatus
+                context = context,
+                event = event,
+                toCalendarId = toCalendarId,
+                uriPrefix = uriPrefix,
+                defaultTimeZone = defaultTimeZone,
+                targetParentId = targetParentId,
+                pairId = pairId,
+                syncTitle = syncTitle,
+                customTitle = customTitle,
+                titlePrefix = titlePrefix,
+                titleSuffix = titleSuffix,
+                syncDescription = syncDescription,
+                customDescription = customDescription,
+                descriptionPrefix = descriptionPrefix,
+                descriptionSuffix = descriptionSuffix,
+                syncLocation = syncLocation,
+                customLocation = customLocation,
+                syncAvailability = syncAvailability,
+                customAvailability = customAvailability,
+                syncStatus = syncStatus
             )
             val sigKey = "${event.title ?: ""}|${event.dtStart}"
             val existingMeta = existingTargetEvents[event.id] ?: existingTargetBySignature[sigKey]

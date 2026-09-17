@@ -162,7 +162,6 @@ fun SyncEngineSettingsCard(
             // Battery Optimization Status & Guidance
             BatteryOptimizationStatusCard(
                 isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
-                syncIntervalMinutes = syncIntervalMinutes,
                 onOpenBatterySettings = onOpenBatterySettings
             )
         }

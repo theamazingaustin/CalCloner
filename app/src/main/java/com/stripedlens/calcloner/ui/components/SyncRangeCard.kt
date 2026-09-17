@@ -45,14 +45,6 @@ fun SyncRangeCard(
     daysFuture: Int,
     onDaysPastChange: (Int) -> Unit,
     onDaysFutureChange: (Int) -> Unit,
-    lastSyncTime: Long? = null,
-    syncedEventsCount: Int = 0,
-    lastDurationMs: Long? = null,
-    lastInsertedCount: Int = 0,
-    lastUpdatedCount: Int = 0,
-    lastDeletedCount: Int = 0,
-    onSyncNow: (() -> Unit)? = null,
-    isSyncing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Decompose daysPast into (number, unit)

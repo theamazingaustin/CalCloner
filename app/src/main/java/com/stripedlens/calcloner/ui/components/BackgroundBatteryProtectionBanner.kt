@@ -166,7 +166,6 @@ fun SamsungBatteryBanner(
 @Composable
 fun BatteryOptimizationStatusCard(
     isIgnoringBatteryOptimizations: Boolean,
-    syncIntervalMinutes: Int,
     onOpenBatterySettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {

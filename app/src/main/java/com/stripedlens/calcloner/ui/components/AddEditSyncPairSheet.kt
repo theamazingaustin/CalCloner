@@ -548,6 +548,61 @@ fun AddEditSyncPairSheet(
                         )
                     }
 
+                    // Sync Issue Alert Banner inside Sync Settings
+                    val pairErrorMessage = when {
+                        selectedFromCal == null && pairToEdit != null -> "Source calendar '${pairToEdit.fromCalendarName}' was not found on this device."
+                        selectedToCal == null && pairToEdit != null -> "Target calendar '${pairToEdit.toCalendarName}' was not found on this device."
+                        selectedToCal != null && !selectedToCal!!.canWrite -> "Target calendar '${selectedToCal!!.displayName}' is read-only."
+                        pairToEdit?.hasSyncError == true -> pairToEdit.lastSyncStatus ?: "Recent sync operation failed."
+                        else -> null
+                    }
+
+                    if (pairErrorMessage != null) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Sync Issue",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "SYNC ISSUE DETECTED",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Text(
+                                        text = pairErrorMessage,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Nickname Input
                     OutlinedTextField(
                         value = nickname,

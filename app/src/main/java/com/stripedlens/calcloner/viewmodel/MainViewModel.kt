@@ -687,6 +687,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun openEditPairSheetById(pairId: String) {
+        viewModelScope.launch {
+            val pairs = repo.syncPairsFlow.first()
+            val target = pairs.find { it.id == pairId }
+            if (target != null) {
+                _uiState.update {
+                    it.copy(
+                        selectedTab = AppTab.SYNC,
+                        pairToEdit = target,
+                        showAddEditSheet = true
+                    )
+                }
+            }
+        }
+    }
+
     fun dismissAddEditSheet() {
         _uiState.update {
             it.copy(

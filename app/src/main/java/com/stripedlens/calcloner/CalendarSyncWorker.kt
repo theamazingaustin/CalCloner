@@ -45,9 +45,11 @@ class CalendarSyncWorker(
                 repo.togglePairEnabled(pair.id, false)
                 val statusMsg = "Calendar Not Found: $missingDesc not found. Pair disabled."
                 repo.updatePairSyncStatus(pair.id, System.currentTimeMillis(), statusMsg)
-                showCalendarNotFoundNotification(
+                showSyncFailureNotification(
                     context = appContext,
-                    message = "$missingDesc not found on device. Sync pair has been disabled."
+                    pairId = pair.id,
+                    pairName = pair.displayName,
+                    message = "$missingDesc not found on device. Tap to adjust pair."
                 )
             } else {
                 validPairs.add(pair)
@@ -64,6 +66,20 @@ class CalendarSyncWorker(
             val totalUpdated = results.values.sumOf { it.updatedCount }
             val totalDeleted = results.values.sumOf { it.deletedCount }
 
+            // Check if any specific pair failed
+            val failedPairs = validPairs.filter { it.id !in results }
+            if (failedPairs.isNotEmpty()) {
+                val firstFailed = failedPairs.first()
+                val freshPairs = repo.syncPairsFlow.first()
+                val failedStatus = freshPairs.find { it.id == firstFailed.id }?.lastSyncStatus ?: "Sync failed"
+                showSyncFailureNotification(
+                    context = appContext,
+                    pairId = firstFailed.id,
+                    pairName = firstFailed.displayName,
+                    message = "$failedStatus. Tap to adjust pair."
+                )
+            }
+
             val statusMsg = when {
                 totalInserted == 0 && totalUpdated == 0 && totalDeleted == 0 -> "Auto-sync complete: 0 changes across ${validPairs.size} pair(s)."
                 else -> {
@@ -76,17 +92,35 @@ class CalendarSyncWorker(
             }
 
             repo.saveLastSync(System.currentTimeMillis(), statusMsg)
-            Result.success()
+            if (failedPairs.isNotEmpty()) Result.retry() else Result.success()
         } catch (e: SecurityException) {
             repo.saveLastSync(System.currentTimeMillis(), "Permission denied")
+            showSyncFailureNotification(
+                context = appContext,
+                pairId = validPairs.firstOrNull()?.id,
+                pairName = validPairs.firstOrNull()?.displayName ?: "Sync Engine",
+                message = "Calendar permissions revoked. Tap to adjust permissions."
+            )
             Result.failure()
         } catch (e: Exception) {
-            repo.saveLastSync(System.currentTimeMillis(), "Failed: ${e.message}")
+            val errorMsg = e.message?.take(80) ?: "Unexpected error"
+            repo.saveLastSync(System.currentTimeMillis(), "Failed: $errorMsg")
+            showSyncFailureNotification(
+                context = appContext,
+                pairId = validPairs.firstOrNull()?.id,
+                pairName = validPairs.firstOrNull()?.displayName ?: "Sync Engine",
+                message = "Sync failed: $errorMsg. Tap to adjust pair."
+            )
             Result.retry()
         }
     }
 
-    private fun showCalendarNotFoundNotification(context: Context, message: String) {
+    private fun showSyncFailureNotification(
+        context: Context,
+        pairId: String?,
+        pairName: String,
+        message: String
+    ) {
         val channelId = "calcloner_alerts"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -102,18 +136,22 @@ class CalendarSyncWorker(
         }
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (!pairId.isNullOrBlank()) {
+                putExtra(MainActivity.EXTRA_OPEN_PAIR_ID, pairId)
+            }
         }
+        val notifId = pairId?.hashCode() ?: 1001
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            notifId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_calcloner)
-            .setContentTitle("Calendar Not Found")
+            .setContentTitle("Sync Issue: $pairName")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -122,7 +160,7 @@ class CalendarSyncWorker(
             .build()
 
         try {
-            NotificationManagerCompat.from(context).notify(1001, notification)
+            NotificationManagerCompat.from(context).notify(notifId, notification)
         } catch (_: SecurityException) {}
     }
 }

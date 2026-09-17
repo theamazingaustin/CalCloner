@@ -243,35 +243,16 @@ fun SyncPairCard(
                 }
             }
 
-            // Accessibility Warning if target is read-only or missing
-            if (!isTargetAccessible) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = if (toCalendar == null) "Target calendar not found on device" else "Target calendar is read-only",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
+            // Sync Issue Warning Callout (Missing calendar, read-only target, or recent sync failure)
+            val syncErrorMessage = when {
+                fromCalendar == null -> "Source calendar not found on device"
+                toCalendar == null -> "Target calendar not found on device"
+                !toCalendar.canWrite -> "Target calendar is read-only"
+                pair.hasSyncError -> pair.lastSyncStatus ?: "Sync failed"
+                else -> null
             }
 
-            // Sync Failure Warning Banner
-            if (isTargetAccessible && pair.lastSyncStatus?.let { it.startsWith("Failed") || it.contains("Not Found") || it.contains("Permission denied") } == true) {
+            if (syncErrorMessage != null) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f),
@@ -285,12 +266,12 @@ fun SyncPairCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Warning,
-                            contentDescription = "Sync Error",
+                            contentDescription = "Sync Issue",
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = pair.lastSyncStatus,
+                            text = syncErrorMessage,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             maxLines = 1,

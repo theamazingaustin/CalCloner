@@ -71,6 +71,14 @@ data class SyncPair(
 ) {
     val displayName: String get() = nickname?.takeIf { it.isNotBlank() } ?: "$fromCalendarName → $toCalendarName"
 
+    val hasSyncError: Boolean get() {
+        val status = lastSyncStatus ?: return false
+        return status.contains("fail", ignoreCase = true) ||
+               status.contains("error", ignoreCase = true) ||
+               status.contains("not found", ignoreCase = true) ||
+               status.contains("denied", ignoreCase = true)
+    }
+
     fun toJson(): org.json.JSONObject = org.json.JSONObject().apply {
         put("id", id)
         if (!nickname.isNullOrEmpty()) put("nickname", nickname)

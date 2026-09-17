@@ -36,6 +36,9 @@ import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.components.sheets.PairDeleteSection
 import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
+import com.stripedlens.calcloner.ui.components.sheets.SyncPairErrorBanner
+import com.stripedlens.calcloner.ui.components.sheets.SyncPairNicknameField
+import com.stripedlens.calcloner.ui.components.sheets.SyncPairSheetHeader
 import com.stripedlens.calcloner.ui.dialogs.CalendarRoleInfoDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DiscardChangesDialog
@@ -464,71 +467,12 @@ fun AddEditSyncPairSheet(
                         .fillMaxWidth()
                         .statusBarsPadding()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.weight(1f, fill = false)
-                        ) {
-                            IconButton(
-                                onClick = { attemptDismiss() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color(0xFF09090B)
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = if (pairToEdit != null) "Edit Sync Configuration" else "New Sync Configuration",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF09090B)
-                                )
-                                Text(
-                                    text = if (pairToEdit != null) "Configure Route, Window & Filters" else "Map source calendar to target clone",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF09090B).copy(alpha = 0.8f),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        // Active / Paused Switch
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = if (isEnabled) "Active" else "Paused",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF09090B)
-                            )
-                            Switch(
-                                checked = isEnabled,
-                                onCheckedChange = { isEnabled = it },
-                                modifier = Modifier
-                                    .scale(0.75f)
-                                    .height(20.dp),
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = Color(0xFF09090B).copy(alpha = 0.35f),
-                                    uncheckedThumbColor = Color(0xFF09090B),
-                                    uncheckedTrackColor = Color(0xFF09090B).copy(alpha = 0.2f)
-                                )
-                            )
-                        }
-                    }
+                    SyncPairSheetHeader(
+                        isEditing = pairToEdit != null,
+                        isEnabled = isEnabled,
+                        onEnabledChange = { isEnabled = it },
+                        onCloseClick = { attemptDismiss() }
+                    )
                 }
             }
 
@@ -558,64 +502,14 @@ fun AddEditSyncPairSheet(
                     }
 
                     if (pairErrorMessage != null) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Warning,
-                                            contentDescription = "Sync Issue",
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "SYNC ISSUE DETECTED",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.error,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                    Text(
-                                        text = pairErrorMessage,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        lineHeight = 16.sp
-                                    )
-                                }
-                            }
-                        }
+                        SyncPairErrorBanner(errorMessage = pairErrorMessage)
                     }
 
                     // Nickname Input
-                    OutlinedTextField(
-                        value = nickname,
-                        onValueChange = { nickname = it },
-                        label = { Text("Nickname (optional)", fontSize = 12.sp) },
-                        placeholder = { Text("e.g. Work, On-Call, Personal Mirror", fontSize = 13.sp) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = themeAccentColor,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                    SyncPairNicknameField(
+                        nickname = nickname,
+                        onNicknameChange = { nickname = it },
+                        focusedBorderColor = themeAccentColor
                     )
 
                     // Animated Light-Pulse Sync Route Conduit Flow

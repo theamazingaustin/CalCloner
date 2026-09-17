@@ -49,12 +49,16 @@ fun DeletePairDialog(
     onConfirmDelete: (deleteClonedEvents: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    ApplyDialogBlurEffect()
     var deleteClonedChoice by remember { mutableStateOf<Boolean?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
         properties = DialogProperties(usePlatformDefaultWidth = false),
+        shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha),
+        tonalElevation = 6.dp,
         icon = {
             Icon(
                 imageVector = Icons.Default.DeleteForever,

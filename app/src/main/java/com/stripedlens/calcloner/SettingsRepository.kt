@@ -56,8 +56,8 @@ class SettingsRepository(private val context: Context) {
             val legacyToId = prefs[TO_CALENDAR_ID]
             val legacyToName = prefs[TO_CALENDAR_NAME] ?: "Clone Calendar"
             if (legacyFromId != null && legacyToId != null) {
-                val legacyPast = prefs[SYNC_DAYS_PAST] ?: 30
-                val legacyFuture = prefs[SYNC_DAYS_FUTURE] ?: 30
+                val legacyPast = prefs[SYNC_DAYS_PAST] ?: AppConstants.Sync.DEFAULT_DAYS_PAST
+                val legacyFuture = prefs[SYNC_DAYS_FUTURE] ?: AppConstants.Sync.DEFAULT_DAYS_FUTURE
                 val legacyTime = prefs[LAST_SYNC_TIME]
                 val legacyStatus = prefs[LAST_SYNC_STATUS]
                 listOf(

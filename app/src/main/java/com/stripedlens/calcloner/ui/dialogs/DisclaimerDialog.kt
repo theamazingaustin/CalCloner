@@ -23,6 +23,7 @@ fun DisclaimerConsentDialog(
 ) {
     var hasAgreed by remember { mutableStateOf(false) }
 
+    ApplyDialogBlurEffect()
     Dialog(
         onDismissRequest = { /* Non-dismissible until agreed */ },
         properties = DialogProperties(
@@ -34,8 +35,15 @@ fun DisclaimerConsentDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth(UiDimensions.DialogWidthFraction),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = UiDimensions.DialogGlassBorderAlpha)
+            )
         ) {
             Column(
                 modifier = Modifier

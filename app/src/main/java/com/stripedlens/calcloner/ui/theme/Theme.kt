@@ -28,15 +28,9 @@ object TitaniumMint {
 }
 
 /**
- * Universal layout and dimension tokens for consistent UI sizing across the application.
+ * Universal layout and dimension tokens forwarded to centralized AppConstants.Ui.
  */
-object UiDimensions {
-    /**
-     * Percentage of screen width used by dialogs and popups (0.92f = 92% screen width).
-     * Adjust this value in one place to universally change all dialog widths.
-     */
-    const val DialogWidthFraction = 0.92f
-}
+typealias UiDimensions = com.stripedlens.calcloner.AppConstants.Ui
 
 private val DarkColorScheme = darkColorScheme(
     primary = TitaniumMint.Mint400,

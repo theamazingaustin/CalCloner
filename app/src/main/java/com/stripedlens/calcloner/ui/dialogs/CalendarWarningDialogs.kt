@@ -39,14 +39,16 @@ fun CalendarRoleInfoDialog(
         "This calendar will be populated with all events found in the source calendar. In case there is a bug or glitch, it is highly recommended to sync to a blank calendar, not a calendar mixed with other / manually created events."
     }
 
+    ApplyDialogBlurEffect()
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.4f)),
+            shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha),
+            tonalElevation = 6.dp,
+            border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = UiDimensions.DialogGlassBorderAlpha)),
             modifier = Modifier
                 .fillMaxWidth(UiDimensions.DialogWidthFraction)
         ) {
@@ -158,12 +160,14 @@ fun BatteryOptimizationInfoDialog(
     onContinue: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    ApplyDialogBlurEffect()
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        shape = RoundedCornerShape(16.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha),
+        tonalElevation = 6.dp,
         icon = {
             Icon(
                 imageVector = Icons.Default.Refresh,

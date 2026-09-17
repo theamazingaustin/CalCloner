@@ -20,7 +20,7 @@ import kotlinx.coroutines.delay
  */
 object CalendarMaintenance {
 
-    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+    private val CALCLONER_TAG_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REGEX
 
     /**
      * Remove all cloned events strictly from the TARGET (Clone) calendar.

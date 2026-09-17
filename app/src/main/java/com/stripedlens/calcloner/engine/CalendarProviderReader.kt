@@ -14,7 +14,7 @@ import com.stripedlens.calcloner.SyncReminder
  */
 object CalendarProviderReader {
 
-    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+    private val CALCLONER_TAG_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REGEX
 
     /**
      * Query count of active events in a given calendar.

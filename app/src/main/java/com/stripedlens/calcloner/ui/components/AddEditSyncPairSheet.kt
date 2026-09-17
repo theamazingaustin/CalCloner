@@ -39,6 +39,7 @@ import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
 import com.stripedlens.calcloner.ui.dialogs.CalendarRoleInfoDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DiscardChangesDialog
+import com.stripedlens.calcloner.ui.dialogs.ApplyDialogBlurEffect
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.ui.theme.UiDimensions
 import androidx.compose.ui.window.DialogProperties
@@ -243,10 +244,14 @@ fun AddEditSyncPairSheet(
         val isSource = pending.second
         val conflict = otherPairs.find { it.fromCalendarId == cal.id || it.toCalendarId == cal.id }
         val role = if (conflict?.fromCalendarId == cal.id) "Source" else "Target"
+        ApplyDialogBlurEffect()
         AlertDialog(
             onDismissRequest = { pendingCalendarSelection = null },
             properties = DialogProperties(usePlatformDefaultWidth = false),
             modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
+            shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha),
+            tonalElevation = 6.dp,
             icon = {
                 Icon(
                     imageVector = Icons.Default.Warning,

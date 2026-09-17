@@ -30,9 +30,9 @@ import java.util.TimeZone
  */
 object CalendarEventWriter {
 
-    private val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
-    private val CALCLONER_TAG_REPLACE_REGEX = Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
-    private val LEGACY_CALCLONE_TAG_REPLACE_REGEX = Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
+    private val CALCLONER_TAG_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REGEX
+    private val CALCLONER_TAG_REPLACE_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REPLACE_REGEX
+    private val LEGACY_CALCLONE_TAG_REPLACE_REGEX = com.stripedlens.calcloner.AppConstants.Engine.LEGACY_CALCLONE_TAG_REPLACE_REGEX
 
     internal data class ClonedEventMeta(
         val targetId: Long,

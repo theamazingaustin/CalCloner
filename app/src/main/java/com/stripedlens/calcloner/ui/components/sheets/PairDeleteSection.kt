@@ -45,7 +45,7 @@ fun PairDeleteSection(
     ) {
         // Section Header
         Text(
-            text = "DANGER ZONE",
+            text = "DELETE SYNC PAIR",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = TitaniumMint.Rose400,

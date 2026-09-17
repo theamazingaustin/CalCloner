@@ -129,48 +129,45 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveSyncPairs(pairs: List<SyncPair>) {
+    private suspend fun mutatePairs(transform: (MutableList<SyncPair>) -> Unit) {
         pairsMutex.withLock {
             context.dataStore.edit { preferences ->
-                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(pairs)
+                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
+                transform(currentPairs)
+                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
             }
         }
     }
 
+    suspend fun saveSyncPairs(pairs: List<SyncPair>) {
+        mutatePairs { list ->
+            list.clear()
+            list.addAll(pairs)
+        }
+    }
+
     suspend fun upsertSyncPair(pair: SyncPair) {
-        pairsMutex.withLock {
-            context.dataStore.edit { preferences ->
-                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-                val index = currentPairs.indexOfFirst { it.id == pair.id }
-                if (index >= 0) {
-                    currentPairs[index] = pair
-                } else {
-                    currentPairs.add(pair)
-                }
-                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
+        mutatePairs { list ->
+            val index = list.indexOfFirst { it.id == pair.id }
+            if (index >= 0) {
+                list[index] = pair
+            } else {
+                list.add(pair)
             }
         }
     }
 
     suspend fun deleteSyncPair(pairId: String) {
-        pairsMutex.withLock {
-            context.dataStore.edit { preferences ->
-                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-                currentPairs.removeAll { it.id == pairId }
-                preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
-            }
+        mutatePairs { list ->
+            list.removeAll { it.id == pairId }
         }
     }
 
     suspend fun togglePairEnabled(pairId: String, isEnabled: Boolean) {
-        pairsMutex.withLock {
-            context.dataStore.edit { preferences ->
-                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-                val index = currentPairs.indexOfFirst { it.id == pairId }
-                if (index >= 0) {
-                    currentPairs[index] = currentPairs[index].copy(isEnabled = isEnabled)
-                    preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
-                }
+        mutatePairs { list ->
+            val index = list.indexOfFirst { it.id == pairId }
+            if (index >= 0) {
+                list[index] = list[index].copy(isEnabled = isEnabled)
             }
         }
     }
@@ -184,21 +181,17 @@ class SettingsRepository(private val context: Context) {
         deletedCount: Int = 0,
         durationMs: Long? = null
     ) {
-        pairsMutex.withLock {
-            context.dataStore.edit { preferences ->
-                val currentPairs = SyncPair.listFromJsonString(preferences[SYNC_PAIRS_JSON]).toMutableList()
-                val index = currentPairs.indexOfFirst { it.id == pairId }
-                if (index >= 0) {
-                    currentPairs[index] = currentPairs[index].copy(
-                        lastSyncTime = timestamp,
-                        lastSyncStatus = status,
-                        lastInsertedCount = insertedCount,
-                        lastUpdatedCount = updatedCount,
-                        lastDeletedCount = deletedCount,
-                        lastDurationMs = durationMs
-                    )
-                    preferences[SYNC_PAIRS_JSON] = SyncPair.listToJsonString(currentPairs)
-                }
+        mutatePairs { list ->
+            val index = list.indexOfFirst { it.id == pairId }
+            if (index >= 0) {
+                list[index] = list[index].copy(
+                    lastSyncTime = timestamp,
+                    lastSyncStatus = status,
+                    lastInsertedCount = insertedCount,
+                    lastUpdatedCount = updatedCount,
+                    lastDeletedCount = deletedCount,
+                    lastDurationMs = durationMs
+                )
             }
         }
     }

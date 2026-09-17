@@ -11,20 +11,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.stripedlens.calcloner.ThemeMode
 
-// Titanium Mint Color Tokens
+// Titanium Mint Color Tokens (delegated to consolidated Palette)
 object TitaniumMint {
-    val Mint400 = Color(0xFF34D399)
-    val Mint500 = Color(0xFF10B981)
-    val Mint600 = Color(0xFF059669)
-    val Amber400 = Color(0xFFFBBF24)
-    val Amber500 = Color(0xFFF9BD22)
-    val Rose400 = Color(0xFFFB7185)
-    val Rose500 = Color(0xFFF43F5E)
-    val CarbonOnyx = Color(0xFF121214)
-    val SurfaceLow = Color(0xFF18181B)
-    val SurfaceMid = Color(0xFF1F1F23)
-    val SurfaceHigh = Color(0xFF27272A)
-    val BorderDark = Color(0xFF2E2E34)
+    val Mint400 = Palette.Mint400
+    val Mint500 = Palette.Mint500
+    val Mint600 = Palette.Mint600
+    val Amber400 = Palette.Amber400
+    val Amber500 = Palette.Amber500
+    val Rose400 = Palette.Rose400
+    val Rose500 = Palette.Rose500
+    val CarbonOnyx = Palette.Zinc950
+    val SurfaceLow = Palette.Zinc900
+    val SurfaceMid = Palette.Zinc800
+    val SurfaceHigh = Palette.Zinc700
+    val BorderDark = Palette.Zinc700
+}
+
+/**
+ * Accessor for app-wide semantic color tokens: CalClonerTheme.colors.accent, etc.
+ */
+object CalClonerTheme {
+    val colors: CalClonerColors
+        @Composable
+        get() = LocalCalClonerColors.current
 }
 
 /**
@@ -106,10 +115,15 @@ fun CalClonerTheme(
     }
 
     val colorScheme = if (useDarkTheme) DarkColorScheme else LightColorScheme
+    val customColors = if (useDarkTheme) DarkCalClonerColors else LightCalClonerColors
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = TitaniumMintShapes,
-        content = content
-    )
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalCalClonerColors provides customColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = TitaniumMintShapes,
+            content = content
+        )
+    }
 }

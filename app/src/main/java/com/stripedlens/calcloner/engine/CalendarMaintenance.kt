@@ -478,4 +478,74 @@ object CalendarMaintenance {
         onProgress?.invoke(lines.joinToString("\n"))
         return deletedCount
     }
+
+    /**
+     * Permanently purges synced tombstones (DELETED=1 AND DIRTY=0) from the local calendar database
+     * to eliminate SQLite bloat and boost query performance.
+     * Uses CALLER_IS_SYNCADAPTER=true to hard-delete already synchronized tombstones.
+     */
+    suspend fun purgeSyncedTombstones(
+        context: Context,
+        calendarId: Long? = null,
+        onProgress: ((message: String) -> Unit)? = null
+    ): Int {
+        onProgress?.invoke("Scanning for synchronized tombstones...")
+
+        val selection = if (calendarId != null) {
+            "${CalendarContract.Events.DELETED} = 1 AND ${CalendarContract.Events.DIRTY} = 0 AND ${CalendarContract.Events.CALENDAR_ID} = ?"
+        } else {
+            "${CalendarContract.Events.DELETED} = 1 AND ${CalendarContract.Events.DIRTY} = 0"
+        }
+        val selectionArgs = if (calendarId != null) arrayOf(calendarId.toString()) else null
+
+        val tombstoneIds = mutableListOf<Long>()
+        val cursor = context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            arrayOf(CalendarContract.Events._ID),
+            selection,
+            selectionArgs,
+            null
+        )
+        cursor?.use {
+            val idCol = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
+            while (it.moveToNext()) {
+                tombstoneIds.add(it.getLong(idCol))
+            }
+        }
+
+        if (tombstoneIds.isEmpty()) {
+            onProgress?.invoke("No synced tombstones found (database is clean).")
+            return 0
+        }
+
+        onProgress?.invoke("Purging ${tombstoneIds.size} synced tombstone(s)...")
+
+        val syncAdapterUri = CalendarContract.Events.CONTENT_URI.buildUpon()
+            .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+            .build()
+
+        var purgedCount = 0
+        tombstoneIds.chunked(200).forEach { chunk ->
+            val ops = ArrayList<ContentProviderOperation>()
+            for (id in chunk) {
+                val eventUri = ContentUris.withAppendedId(syncAdapterUri, id)
+                ops.add(ContentProviderOperation.newDelete(eventUri).build())
+            }
+            try {
+                val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
+                purgedCount += results.sumOf { (it.count ?: 0).toInt() }
+            } catch (_: Exception) {
+                for (id in chunk) {
+                    try {
+                        val eventUri = ContentUris.withAppendedId(syncAdapterUri, id)
+                        val rows = context.contentResolver.delete(eventUri, null, null)
+                        if (rows > 0) purgedCount++
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
+        onProgress?.invoke("Successfully purged $purgedCount synced tombstone(s).")
+        return purgedCount
+    }
 }

@@ -472,7 +472,8 @@ fun CalendarSyncApp(
                         onCalendarSelected = { calendar -> viewModel.selectDeleteCalendar(calendar) },
                         onOperationTypeSelected = { type -> viewModel.setDeleteOperationType(type) },
                         onConfirmationTextChanged = { text -> viewModel.setDeleteConfirmationText(text) },
-                        onDeleteConfirmed = { viewModel.executeCalendarDelete() }
+                        onDeleteConfirmed = { viewModel.executeCalendarDelete() },
+                        onPurgeTombstones = { calendar -> viewModel.executePurgeTombstones(calendar) }
                     )
                 }
             }

@@ -41,6 +41,7 @@ fun DeleteScreen(
     onOperationTypeSelected: (DeleteOperationType) -> Unit,
     onConfirmationTextChanged: (String) -> Unit,
     onDeleteConfirmed: () -> Unit,
+    onPurgeTombstones: (CalendarInfo?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -514,7 +515,77 @@ fun DeleteScreen(
             }
         }
 
-        // ── Step 4: Progress / Result Status Card ────────────────────────────────
+        // ── Database Optimization & Synced Tombstones ────────────────────────────
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CleaningServices,
+                        contentDescription = null,
+                        tint = TitaniumMint.Mint400,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "DATABASE OPTIMIZATION",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TitaniumMint.Mint400,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Text(
+                    text = "Android calendars retain deleted events as tombstones until synchronized. If your calendar provider does not prune them, or after mass deletions, dead tombstones can bloat queries. This purges already-synchronized tombstones (DELETED=1, DIRTY=0).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+
+                OutlinedButton(
+                    onClick = { onPurgeTombstones(selectedCalendar) },
+                    enabled = !uiState.isOperating,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TitaniumMint.Mint400
+                    ),
+                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CleaningServices,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (selectedCalendar != null) {
+                            "Purge Tombstones (${selectedCalendar.displayName})"
+                        } else {
+                            "Purge All Synced Tombstones"
+                        },
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        // ── Progress / Result Status Card ────────────────────────────────────────
         AnimatedVisibility(
             visible = uiState.isOperating || uiState.operationDone || uiState.progressStatusText.isNotBlank(),
             enter = fadeIn() + expandVertically(),

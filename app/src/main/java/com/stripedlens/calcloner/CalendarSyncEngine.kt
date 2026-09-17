@@ -255,4 +255,19 @@ object CalendarSyncEngine {
             onSelfWrite = { recordSelfWrite() }
         )
     }
+
+    /**
+     * Purges old synchronized tombstones from local calendar database.
+     */
+    suspend fun purgeSyncedTombstones(
+        context: Context,
+        calendarId: Long? = null,
+        onProgress: ((message: String) -> Unit)? = null
+    ): Int = syncMutex.withLock {
+        CalendarMaintenance.purgeSyncedTombstones(
+            context = context,
+            calendarId = calendarId,
+            onProgress = onProgress
+        )
+    }
 }

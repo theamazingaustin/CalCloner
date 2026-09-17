@@ -623,6 +623,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun executePurgeTombstones(calendar: CalendarInfo? = null) {
+        val targetName = calendar?.displayName ?: "all calendars"
+        _uiState.update {
+            it.copy(
+                isOperating = true,
+                operationDone = false,
+                progressFraction = 0f,
+                progressStatusText = "Scanning and purging synchronized tombstones from $targetName..."
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val purged = withContext(Dispatchers.IO) {
+                    CalendarSyncEngine.purgeSyncedTombstones(
+                        context = context,
+                        calendarId = calendar?.id,
+                        onProgress = { msg ->
+                            _uiState.update { it.copy(progressStatusText = msg) }
+                        }
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        operationDone = true,
+                        progressStatusText = if (purged > 0) {
+                            "Optimization complete: Purged $purged dead tombstone(s) from $targetName."
+                        } else {
+                            "Database clean: 0 tombstones found for $targetName."
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(progressStatusText = "Tombstone purge failed: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isOperating = false) }
+                refreshCalendars()
+            }
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // App Settings & Configuration (Import/Export, Disclaimer, Theme)
     // ─────────────────────────────────────────────────────────────────────────────

@@ -136,6 +136,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ─────────────────────────────────────────────────────────────────────────────
 
     /**
+     * Triggered by in-app CalendarContentObserver when local calendars mutate while app is foregrounded.
+     * Refreshes calendar list and automatically triggers reactive sync if configured in Instant mode.
+     */
+    fun onForegroundCalendarChanged() {
+        refreshCalendars()
+        val state = _uiState.value
+        if (state.syncIntervalMinutes == 0 && !state.isOperating && state.syncPairs.any { it.isEnabled }) {
+            syncAll()
+        }
+    }
+
+    /**
      * Sequentially syncs all enabled sync pairs with live progress reporting.
      */
     fun syncAll() {

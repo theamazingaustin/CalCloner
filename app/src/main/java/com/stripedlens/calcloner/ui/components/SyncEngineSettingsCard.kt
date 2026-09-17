@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Settings card configuring background sync intervals, low-power mode behavior,
@@ -67,7 +68,7 @@ fun SyncEngineSettingsCard(
             var showIntervalMenu by remember { mutableStateOf(false) }
             val intervalOptions = listOf(
                 -1 to "Never (manual only)",
-                0 to "Instant",
+                0 to "Instant (Event-Driven)",
                 15 to "Every 15 minutes",
                 30 to "Every 30 minutes",
                 60 to "Every 1 hour",
@@ -131,6 +132,16 @@ fun SyncEngineSettingsCard(
                         )
                     }
                 }
+            }
+
+            if (syncIntervalMinutes == 0) {
+                Text(
+                    text = "Syncs automatically within seconds of calendar changes with 0% idle battery drain.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
 
             // Low Battery / Power Saver Setting

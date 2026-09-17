@@ -6,9 +6,11 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import com.stripedlens.calcloner.util.CalendarContentObserver
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -50,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -190,16 +193,36 @@ fun CalendarSyncApp(
         }
     }
 
-    // Battery optimization status observer on lifecycle resume
+    // Battery optimization status & foreground calendar content observer
+    val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
+        val calendarObserver = CalendarContentObserver(coroutineScope) {
+            viewModel.onForegroundCalendarChanged()
+        }
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.checkBatteryOptimizationStatus()
+                try {
+                    context.contentResolver.registerContentObserver(
+                        CalendarContract.Events.CONTENT_URI,
+                        true,
+                        calendarObserver
+                    )
+                } catch (_: Exception) {}
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                try {
+                    context.contentResolver.unregisterContentObserver(calendarObserver)
+                } catch (_: Exception) {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            try {
+                context.contentResolver.unregisterContentObserver(calendarObserver)
+            } catch (_: Exception) {}
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // User feedback toasts emitted from ViewModel

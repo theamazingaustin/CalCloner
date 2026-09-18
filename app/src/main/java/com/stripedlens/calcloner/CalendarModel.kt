@@ -69,6 +69,7 @@ data class SyncPair(
     val syncAvailability: Boolean = true,
     val customAvailability: Int? = null,
     val syncStatus: Boolean = true,
+    val customStatus: Int? = null,
     val lastSyncTime: Long? = null,
     val lastSyncStatus: String? = null,
     val lastInsertedCount: Int = 0,
@@ -120,6 +121,7 @@ data class SyncPair(
         put("syncAvailability", syncAvailability)
         if (customAvailability != null) put("customAvailability", customAvailability)
         put("syncStatus", syncStatus)
+        if (customStatus != null) put("customStatus", customStatus)
         if (lastSyncTime != null) put("lastSyncTime", lastSyncTime)
         if (lastSyncStatus != null) put("lastSyncStatus", lastSyncStatus)
         put("lastInsertedCount", lastInsertedCount)
@@ -151,7 +153,8 @@ data class SyncPair(
             syncReminders: Boolean = true,
             syncAvailability: Boolean = true,
             customAvailability: Int? = null,
-            syncStatus: Boolean = true
+            syncStatus: Boolean = true,
+            customStatus: Int? = null
         ): SyncPair = SyncPair(
             id = java.util.UUID.randomUUID().toString(),
             nickname = nickname,
@@ -175,7 +178,8 @@ data class SyncPair(
             syncReminders = syncReminders,
             syncAvailability = syncAvailability,
             customAvailability = customAvailability,
-            syncStatus = syncStatus
+            syncStatus = syncStatus,
+            customStatus = customStatus
         )
 
         fun fromJson(json: org.json.JSONObject): SyncPair = SyncPair(
@@ -202,6 +206,7 @@ data class SyncPair(
             syncAvailability = json.optBoolean("syncAvailability", true),
             customAvailability = if (json.has("customAvailability") && !json.isNull("customAvailability")) json.getInt("customAvailability") else null,
             syncStatus = json.optBoolean("syncStatus", true),
+            customStatus = if (json.has("customStatus") && !json.isNull("customStatus")) json.getInt("customStatus") else null,
             lastSyncTime = if (json.has("lastSyncTime") && !json.isNull("lastSyncTime")) json.getLong("lastSyncTime") else null,
             lastSyncStatus = if (json.has("lastSyncStatus") && !json.isNull("lastSyncStatus")) json.getString("lastSyncStatus") else null,
             lastInsertedCount = json.optInt("lastInsertedCount", 0),

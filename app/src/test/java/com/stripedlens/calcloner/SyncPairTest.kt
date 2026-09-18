@@ -183,7 +183,8 @@ class SyncPairTest {
             syncReminders = true,
             syncAvailability = false,
             customAvailability = 1, // AVAILABILITY_BUSY
-            syncStatus = true
+            syncStatus = false,
+            customStatus = 0 // STATUS_TENTATIVE
         )
 
         val json = pair.toJson().toString()
@@ -202,7 +203,8 @@ class SyncPairTest {
         assertTrue(restored.syncReminders)
         assertFalse(restored.syncAvailability)
         assertEquals(1, restored.customAvailability)
-        assertTrue(restored.syncStatus)
+        assertFalse(restored.syncStatus)
+        assertEquals(0, restored.customStatus)
     }
 
     @Test

@@ -218,6 +218,8 @@ fun SyncFieldOptionsCard(
     onCustomAvailabilityChange: (Int?) -> Unit,
     syncStatus: Boolean,
     onSyncStatusChange: (Boolean) -> Unit,
+    customStatus: Int? = null,
+    onCustomStatusChange: (Int?) -> Unit = {},
     accentColor: Color = TitaniumMint.Mint400,
     modifier: Modifier = Modifier
 ) {
@@ -228,6 +230,7 @@ fun SyncFieldOptionsCard(
     var descriptionExpanded by remember { mutableStateOf(false) }
     var locationExpanded by remember { mutableStateOf(false) }
     var availabilityExpanded by remember { mutableStateOf(false) }
+    var statusExpanded by remember { mutableStateOf(false) }
 
     // Real-time validation: Title is required if mirroring is turned off
     val isTitleInvalid = !syncTitle && customTitle.isBlank()
@@ -560,10 +563,12 @@ fun SyncFieldOptionsCard(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                val isBusy = customAvailability == null || customAvailability == CalendarContract.Events.AVAILABILITY_BUSY
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 FilterChip(
-                                    selected = isBusy,
+                                    selected = customAvailability == CalendarContract.Events.AVAILABILITY_BUSY,
                                     onClick = { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_BUSY) },
                                     label = { Text("Busy") },
                                     colors = FilterChipDefaults.filterChipColors(
@@ -575,6 +580,15 @@ fun SyncFieldOptionsCard(
                                     selected = customAvailability == CalendarContract.Events.AVAILABILITY_FREE,
                                     onClick = { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_FREE) },
                                     label = { Text("Free") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                                FilterChip(
+                                    selected = customAvailability == null,
+                                    onClick = { onCustomAvailabilityChange(null) },
+                                    label = { Text("Empty / None") },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = accentColor.copy(alpha = 0.2f),
                                         selectedLabelColor = accentColor
@@ -601,18 +615,59 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 6. STATUS (Simple Toggle)
+                    // 6. STATUS ACCORDION
                     FieldAccordionRow(
                         title = "Event Status",
-                        subtitle = "Mirror Confirmed, Tentative, or Canceled status",
+                        subtitle = if (syncStatus) "Mirror Confirmed, Tentative, or Canceled status" else "Fixed status override",
                         icon = Icons.Default.CheckCircleOutline,
                         checked = syncStatus,
-                        isExpanded = false,
-                        onExpandToggle = {},
-                        hasSubOptions = false,
+                        isExpanded = statusExpanded,
+                        onExpandToggle = { statusExpanded = !statusExpanded },
+                        hasSubOptions = !syncStatus,
                         accentColor = accentColor,
                         onCheckedChange = onSyncStatusChange
-                    ) {}
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Choose default status on target calendar:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val effectiveStatus = customStatus ?: CalendarContract.Events.STATUS_CONFIRMED
+                                FilterChip(
+                                    selected = effectiveStatus == CalendarContract.Events.STATUS_CONFIRMED,
+                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_CONFIRMED) },
+                                    label = { Text("Confirmed") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                                FilterChip(
+                                    selected = effectiveStatus == CalendarContract.Events.STATUS_TENTATIVE,
+                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_TENTATIVE) },
+                                    label = { Text("Tentative") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                                FilterChip(
+                                    selected = effectiveStatus == CalendarContract.Events.STATUS_CANCELED,
+                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_CANCELED) },
+                                    label = { Text("Canceled") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

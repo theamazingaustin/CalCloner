@@ -1,4 +1,4 @@
-﻿package com.stripedlens.calcloner.ui.components.sheets
+package com.stripedlens.calcloner.ui.components.sheets
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -24,11 +24,30 @@ import com.stripedlens.calcloner.ui.theme.TitaniumMint
  * Displays disabled controls and an amber 'COMING SOON' badge to preview power features
  * without affecting current synchronization logic.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SyncConditionsCard(
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+
+    // Interactive preview state for Active Time Window dropdown
+    var timeWindowExpanded by remember { mutableStateOf(false) }
+    var selectedTimeWindow by remember { mutableStateOf("All Day / Anytime") }
+    val timeWindowOptions = listOf(
+        "All Day / Anytime",
+        "Working Hours (8:00 AM – 5:00 PM)",
+        "Morning (6:00 AM – 12:00 PM)",
+        "Afternoon / Evening (12:00 PM – 9:00 PM)",
+        "Custom Hours (Coming Soon)"
+    )
+
+    // RSVP preview state
+    var selectedRsvp by remember { mutableStateOf("Accepted") }
+
+    // Keyword & Regex preview state
+    var titleFilterText by remember { mutableStateOf("") }
+    var descriptionFilterText by remember { mutableStateOf("") }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -87,7 +106,7 @@ fun SyncConditionsCard(
                             }
                         }
                         Text(
-                            text = "Filter events by availability, RSVP status, and time windows.",
+                            text = "Filter events by availability, RSVP status, time windows, and regex.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
@@ -110,9 +129,7 @@ fun SyncConditionsCard(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(0.55f),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Divider(
@@ -138,7 +155,7 @@ fun SyncConditionsCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "Rule-based filtering is currently under development. These options will become interactive in an upcoming release.",
+                                text = "Rule-based filtering is currently under preview. Interactive selections below are previewed for configuration design and will be wired into sync execution in an upcoming update.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 15.sp
@@ -147,7 +164,10 @@ fun SyncConditionsCard(
                     }
 
                     // 1. Availability Filter (Busy / Free)
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(
+                        modifier = Modifier.alpha(0.6f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
                             text = "EVENT AVAILABILITY",
                             fontFamily = FontFamily.Monospace,
@@ -183,10 +203,10 @@ fun SyncConditionsCard(
                         }
                     }
 
-                    // 2. RSVP Attendance Filter
+                    // 2. RSVP Attendance Filter (Accepted / Tentative / Declined)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "RSVP INVITATION STATUS",
+                            text = "ATTENDANCE / RSVP RESPONSE",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -195,32 +215,54 @@ fun SyncConditionsCard(
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.clickable { selectedRsvp = "Accepted" }
                             ) {
-                                RadioButton(selected = true, onClick = null, enabled = false)
+                                RadioButton(
+                                    selected = selectedRsvp == "Accepted",
+                                    onClick = { selectedRsvp = "Accepted" }
+                                )
                                 Text(
-                                    text = "Accepted Only",
+                                    text = "Accepted",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.clickable { selectedRsvp = "Tentative" }
                             ) {
-                                RadioButton(selected = false, onClick = null, enabled = false)
+                                RadioButton(
+                                    selected = selectedRsvp == "Tentative",
+                                    onClick = { selectedRsvp = "Tentative" }
+                                )
                                 Text(
-                                    text = "Include Tentative",
+                                    text = "Tentative",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.clickable { selectedRsvp = "Declined" }
+                            ) {
+                                RadioButton(
+                                    selected = selectedRsvp == "Declined",
+                                    onClick = { selectedRsvp = "Declined" }
+                                )
+                                Text(
+                                    text = "Declined",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
                     }
 
-                    // 3. Time Window Filter
+                    // 3. Time Window Filter (Interactive Dropdown)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "ACTIVE TIME WINDOW",
@@ -230,23 +272,44 @@ fun SyncConditionsCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = 0.5.sp
                         )
-                        OutlinedTextField(
-                            value = "All Day / Anytime",
-                            onValueChange = {},
-                            enabled = false,
-                            readOnly = true,
-                            trailingIcon = {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        ExposedDropdownMenuBox(
+                            expanded = timeWindowExpanded,
+                            onExpandedChange = { timeWindowExpanded = !timeWindowExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedTimeWindow,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = timeWindowExpanded)
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = timeWindowExpanded,
+                                onDismissRequest = { timeWindowExpanded = false }
+                            ) {
+                                timeWindowOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option, style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = {
+                                            selectedTimeWindow = option
+                                            timeWindowExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
 
-                    // 4. Keyword Match Filter
+                    // 4. Title Keyword & Regex Filter
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "TITLE KEYWORD FILTER",
+                            text = "TITLE KEYWORD & REGEX FILTER",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -254,12 +317,42 @@ fun SyncConditionsCard(
                             letterSpacing = 0.5.sp
                         )
                         OutlinedTextField(
-                            value = "",
-                            onValueChange = {},
-                            enabled = false,
-                            placeholder = { Text("e.g. Include '#work', exclude 'Personal'") },
+                            value = titleFilterText,
+                            onValueChange = { titleFilterText = it },
+                            placeholder = { Text("e.g. #work, /sync|standup/i, or !Personal") },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Accepts literal keywords (e.g. '#work'), negation ('!Private'), or regex patterns (/pattern/flags).",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            fontSize = 10.sp
+                        )
+                    }
+
+                    // 5. Description Keyword & Regex Filter
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "DESCRIPTION KEYWORD & REGEX FILTER",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 0.5.sp
+                        )
+                        OutlinedTextField(
+                            value = descriptionFilterText,
+                            onValueChange = { descriptionFilterText = it },
+                            placeholder = { Text("e.g. zoom.us, /(?i)confidential/, or !skip-sync") },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Filter based on event description content. Matches plain substrings or standard Java/Kotlin regex patterns.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            fontSize = 10.sp
                         )
                     }
                 }

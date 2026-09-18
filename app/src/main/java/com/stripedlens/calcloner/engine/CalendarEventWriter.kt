@@ -192,7 +192,8 @@ object CalendarEventWriter {
         customLocation: String? = null,
         syncAvailability: Boolean = true,
         customAvailability: Int? = null,
-        syncStatus: Boolean = true
+        syncStatus: Boolean = true,
+        customStatus: Int? = null
     ): ContentValues {
         return ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, toCalendarId)
@@ -315,14 +316,22 @@ object CalendarEventWriter {
                 put(CalendarContract.Events.EXDATE, event.exdate)
             }
 
-            val eventStatus = if (syncStatus) (event.status ?: CalendarContract.Events.STATUS_CONFIRMED) else CalendarContract.Events.STATUS_CONFIRMED
-            put(CalendarContract.Events.STATUS, eventStatus)
-            val eventAvailability = if (syncAvailability) {
-                event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY
+            val eventStatus = if (syncStatus) {
+                event.status ?: CalendarContract.Events.STATUS_CONFIRMED
             } else {
-                customAvailability ?: CalendarContract.Events.AVAILABILITY_BUSY
+                customStatus ?: CalendarContract.Events.STATUS_CONFIRMED
             }
-            put(CalendarContract.Events.AVAILABILITY, eventAvailability)
+            put(CalendarContract.Events.STATUS, eventStatus)
+            if (syncAvailability) {
+                val eventAvailability = event.availability ?: CalendarContract.Events.AVAILABILITY_BUSY
+                put(CalendarContract.Events.AVAILABILITY, eventAvailability)
+            } else {
+                if (customAvailability != null) {
+                    put(CalendarContract.Events.AVAILABILITY, customAvailability)
+                } else {
+                    putNull(CalendarContract.Events.AVAILABILITY)
+                }
+            }
             put(CalendarContract.Events.HAS_ALARM, if (event.reminders.isNotEmpty()) 1 else 0)
             put(CalendarContract.Events.CUSTOM_APP_PACKAGE, context.packageName)
             val fullAppUri = if (pairId != null) "${uriPrefix}${pairId}/${event.id}" else "$uriPrefix${event.id}"
@@ -365,6 +374,7 @@ object CalendarEventWriter {
         syncAvailability: Boolean = true,
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
+        customStatus: Int? = null,
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
         onSelfWrite: (() -> Unit)? = null
@@ -631,7 +641,8 @@ object CalendarEventWriter {
                 customLocation = customLocation,
                 syncAvailability = syncAvailability,
                 customAvailability = customAvailability,
-                syncStatus = syncStatus
+                syncStatus = syncStatus,
+                customStatus = customStatus
             )
             val sigKey = "${event.title ?: ""}|${event.dtStart}"
             val existingMeta = existingTargetEvents[event.id] ?: existingTargetBySignature[sigKey]

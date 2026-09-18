@@ -99,6 +99,7 @@ fun AddEditSyncPairSheet(
     var syncAvailability by remember { mutableStateOf(pairToEdit?.syncAvailability ?: true) }
     var customAvailability by remember { mutableStateOf(pairToEdit?.customAvailability) }
     var syncStatus by remember { mutableStateOf(pairToEdit?.syncStatus ?: true) }
+    var customStatus by remember { mutableStateOf(pairToEdit?.customStatus) }
 
     val context = LocalContext.current
     var syncedEventsCount by remember { mutableIntStateOf(0) }
@@ -112,7 +113,7 @@ fun AddEditSyncPairSheet(
         daysPast, daysFuture, syncTitle, customTitle, titlePrefix, titleSuffix,
         syncDescription, customDescription, descriptionPrefix, descriptionSuffix,
         syncLocation, customLocation, syncReminders, syncAvailability,
-        customAvailability, syncStatus, pairToEdit
+        customAvailability, syncStatus, customStatus, pairToEdit
     ) {
         if (pairToEdit != null) {
             nickname != (pairToEdit.nickname ?: "") ||
@@ -134,7 +135,8 @@ fun AddEditSyncPairSheet(
             syncReminders != pairToEdit.syncReminders ||
             syncAvailability != pairToEdit.syncAvailability ||
             customAvailability != pairToEdit.customAvailability ||
-            syncStatus != pairToEdit.syncStatus
+            syncStatus != pairToEdit.syncStatus ||
+            customStatus != pairToEdit.customStatus
         } else {
             nickname.isNotBlank() ||
             selectedFromCal != null ||
@@ -154,7 +156,8 @@ fun AddEditSyncPairSheet(
             !syncReminders ||
             !syncAvailability ||
             customAvailability != null ||
-            !syncStatus
+            !syncStatus ||
+            customStatus != null
         }
     }
 
@@ -376,7 +379,8 @@ fun AddEditSyncPairSheet(
             syncReminders = syncReminders,
             syncAvailability = syncAvailability,
             customAvailability = if (!syncAvailability) customAvailability else null,
-            syncStatus = syncStatus
+            syncStatus = syncStatus,
+            customStatus = if (!syncStatus) customStatus else null
         )
     }
 
@@ -755,6 +759,8 @@ fun AddEditSyncPairSheet(
                         onCustomAvailabilityChange = { customAvailability = it },
                         syncStatus = syncStatus,
                         onSyncStatusChange = { syncStatus = it },
+                        customStatus = customStatus,
+                        onCustomStatusChange = { customStatus = it },
                         accentColor = themeAccentColor
                     )
 

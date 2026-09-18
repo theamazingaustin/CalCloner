@@ -68,6 +68,7 @@ stitchdesign/
 .agents/
 .claude/
 .codex/
+.gemini/
 .impeccable/
 *.code-workspace
 .ignore

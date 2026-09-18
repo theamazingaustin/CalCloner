@@ -82,8 +82,8 @@ fun SyncPairSheetHeader(
                 checked = isEnabled,
                 onCheckedChange = onEnabledChange,
                 modifier = Modifier
-                    .scale(0.75f)
-                    .height(20.dp),
+                    .scale(0.85f)
+                    .height(24.dp),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color.White.copy(alpha = 0.45f),

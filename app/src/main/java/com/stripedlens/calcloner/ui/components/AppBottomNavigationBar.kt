@@ -13,11 +13,13 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
+import com.stripedlens.calcloner.ui.theme.Palette
 import com.stripedlens.calcloner.viewmodel.AppTab
 
 /**
@@ -30,6 +32,8 @@ fun AppBottomNavigationBar(
     onTabSelected: (AppTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = CalClonerTheme.colors
+
     NavigationBar(
         modifier = modifier.fillMaxWidth(),
         containerColor = MaterialTheme.colorScheme.surface,
@@ -53,11 +57,11 @@ fun AppBottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = TitaniumMint.Mint400,
-                selectedTextColor = TitaniumMint.Mint400,
-                indicatorColor = TitaniumMint.Mint500.copy(alpha = 0.2f),
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                selectedIconColor = if (colors.isDark) Palette.Zinc950 else Color.White,
+                selectedTextColor = if (colors.isDark) Palette.Mint400 else Palette.Mint700,
+                indicatorColor = if (colors.isDark) Palette.Mint500 else Palette.Mint600,
+                unselectedIconColor = colors.textSecondary,
+                unselectedTextColor = colors.textSecondary
             )
         )
 
@@ -79,11 +83,11 @@ fun AppBottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = TitaniumMint.Amber400,
-                selectedTextColor = TitaniumMint.Amber400,
-                indicatorColor = TitaniumMint.Amber500.copy(alpha = 0.2f),
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                selectedIconColor = if (colors.isDark) Palette.Zinc950 else Color.White,
+                selectedTextColor = if (colors.isDark) Palette.Amber400 else Palette.Amber600,
+                indicatorColor = if (colors.isDark) Palette.Amber500 else Palette.Amber600,
+                unselectedIconColor = colors.textSecondary,
+                unselectedTextColor = colors.textSecondary
             )
         )
 
@@ -105,11 +109,11 @@ fun AppBottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = TitaniumMint.Rose400,
-                selectedTextColor = TitaniumMint.Rose400,
-                indicatorColor = TitaniumMint.Rose500.copy(alpha = 0.2f),
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                selectedIconColor = if (colors.isDark) Palette.Zinc950 else Color.White,
+                selectedTextColor = if (colors.isDark) Palette.Rose400 else Palette.Rose600,
+                indicatorColor = if (colors.isDark) Palette.Rose500 else Palette.Rose600,
+                unselectedIconColor = colors.textSecondary,
+                unselectedTextColor = colors.textSecondary
             )
         )
     }

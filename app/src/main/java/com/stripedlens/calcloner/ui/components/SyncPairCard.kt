@@ -411,8 +411,8 @@ fun SyncPairCard(
                         checked = pair.isEnabled,
                         onCheckedChange = onToggleEnabled,
                         modifier = Modifier
-                            .scale(0.75f)
-                            .height(20.dp)
+                            .scale(0.85f)
+                            .height(24.dp)
                     )
                 }
             }

@@ -3,6 +3,7 @@ package com.stripedlens.calcloner.engine
 import android.content.Context
 import android.provider.CalendarContract
 import com.stripedlens.calcloner.CalendarInfo
+import com.stripedlens.calcloner.SyncAttendee
 import com.stripedlens.calcloner.SyncEvent
 import com.stripedlens.calcloner.SyncReminder
 
@@ -249,9 +250,46 @@ object CalendarProviderReader {
             } catch (_: Exception) {}
         }
 
+        // Bulk-query attendees for all selected source events
+        val attendeesMap = mutableMapOf<Long, MutableList<SyncAttendee>>()
+        eventIds.chunked(150).forEach { chunk ->
+            val inClause = chunk.joinToString(",")
+            val attSelection = "${CalendarContract.Attendees.EVENT_ID} IN ($inClause)"
+            val attProjection = arrayOf(
+                CalendarContract.Attendees.EVENT_ID,
+                CalendarContract.Attendees.ATTENDEE_NAME,
+                CalendarContract.Attendees.ATTENDEE_EMAIL,
+                CalendarContract.Attendees.ATTENDEE_STATUS
+            )
+            try {
+                context.contentResolver.query(
+                    CalendarContract.Attendees.CONTENT_URI,
+                    attProjection,
+                    attSelection,
+                    null,
+                    null
+                )?.use { cur ->
+                    val eventIdCol = cur.getColumnIndexOrThrow(CalendarContract.Attendees.EVENT_ID)
+                    val nameCol = cur.getColumnIndexOrThrow(CalendarContract.Attendees.ATTENDEE_NAME)
+                    val emailCol = cur.getColumnIndexOrThrow(CalendarContract.Attendees.ATTENDEE_EMAIL)
+                    val statusCol = cur.getColumnIndexOrThrow(CalendarContract.Attendees.ATTENDEE_STATUS)
+                    while (cur.moveToNext()) {
+                        val eId = cur.getLong(eventIdCol)
+                        val name = cur.getString(nameCol)
+                        val email = cur.getString(emailCol)
+                        val status = cur.getInt(statusCol)
+                        attendeesMap.getOrPut(eId) { mutableListOf() }.add(
+                            SyncAttendee(name = name, email = email, status = status)
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
         return rawEvents.map { event ->
             val rems = remindersMap[event.id] ?: emptyList()
-            event.copy(reminders = rems)
+            val atts = attendeesMap[event.id] ?: emptyList()
+            event.copy(reminders = rems, attendees = atts)
         }
     }
 

@@ -115,6 +115,8 @@ object CalendarSyncEngine {
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
         customStatus: Int? = null,
+        syncAttendees: Boolean = false,
+        attendeesPlacement: String = "END",
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
     ): SyncResult = syncMutex.withLock {
@@ -140,6 +142,8 @@ object CalendarSyncEngine {
             customAvailability = customAvailability,
             syncStatus = syncStatus,
             customStatus = customStatus,
+            syncAttendees = syncAttendees,
+            attendeesPlacement = attendeesPlacement,
             activePairIds = activePairIds,
             onProgress = onProgress,
             onSelfWrite = { recordSelfWrite() }
@@ -192,6 +196,8 @@ object CalendarSyncEngine {
                     customAvailability = pair.customAvailability,
                     syncStatus = pair.syncStatus,
                     customStatus = pair.customStatus,
+                    syncAttendees = pair.syncAttendees,
+                    attendeesPlacement = pair.attendeesPlacement,
                     activePairIds = activePairIds,
                     onProgress = { _, _, msg ->
                         onPairProgress?.invoke(pair, index + 1, enabledPairs.size, null, msg)

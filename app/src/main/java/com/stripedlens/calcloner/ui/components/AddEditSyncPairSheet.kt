@@ -100,6 +100,8 @@ fun AddEditSyncPairSheet(
     var customAvailability by remember { mutableStateOf(pairToEdit?.customAvailability) }
     var syncStatus by remember { mutableStateOf(pairToEdit?.syncStatus ?: true) }
     var customStatus by remember { mutableStateOf(pairToEdit?.customStatus) }
+    var syncAttendees by remember { mutableStateOf(pairToEdit?.syncAttendees ?: false) }
+    var attendeesPlacement by remember { mutableStateOf(pairToEdit?.attendeesPlacement ?: "END") }
 
     val context = LocalContext.current
     var syncedEventsCount by remember { mutableIntStateOf(0) }
@@ -113,7 +115,7 @@ fun AddEditSyncPairSheet(
         daysPast, daysFuture, syncTitle, customTitle, titlePrefix, titleSuffix,
         syncDescription, customDescription, descriptionPrefix, descriptionSuffix,
         syncLocation, customLocation, syncReminders, syncAvailability,
-        customAvailability, syncStatus, customStatus, pairToEdit
+        customAvailability, syncStatus, customStatus, syncAttendees, attendeesPlacement, pairToEdit
     ) {
         if (pairToEdit != null) {
             nickname != (pairToEdit.nickname ?: "") ||
@@ -136,7 +138,9 @@ fun AddEditSyncPairSheet(
             syncAvailability != pairToEdit.syncAvailability ||
             customAvailability != pairToEdit.customAvailability ||
             syncStatus != pairToEdit.syncStatus ||
-            customStatus != pairToEdit.customStatus
+            customStatus != pairToEdit.customStatus ||
+            syncAttendees != pairToEdit.syncAttendees ||
+            attendeesPlacement != pairToEdit.attendeesPlacement
         } else {
             nickname.isNotBlank() ||
             selectedFromCal != null ||
@@ -157,7 +161,9 @@ fun AddEditSyncPairSheet(
             !syncAvailability ||
             customAvailability != null ||
             !syncStatus ||
-            customStatus != null
+            customStatus != null ||
+            syncAttendees ||
+            attendeesPlacement != "END"
         }
     }
 
@@ -380,7 +386,9 @@ fun AddEditSyncPairSheet(
             syncAvailability = syncAvailability,
             customAvailability = if (!syncAvailability) customAvailability else null,
             syncStatus = syncStatus,
-            customStatus = if (!syncStatus) customStatus else null
+            customStatus = if (!syncStatus) customStatus else null,
+            syncAttendees = syncAttendees,
+            attendeesPlacement = attendeesPlacement
         )
     }
 
@@ -761,6 +769,10 @@ fun AddEditSyncPairSheet(
                         onSyncStatusChange = { syncStatus = it },
                         customStatus = customStatus,
                         onCustomStatusChange = { customStatus = it },
+                        syncAttendees = syncAttendees,
+                        onSyncAttendeesChange = { syncAttendees = it },
+                        attendeesPlacement = attendeesPlacement,
+                        onAttendeesPlacementChange = { attendeesPlacement = it },
                         accentColor = themeAccentColor
                     )
 

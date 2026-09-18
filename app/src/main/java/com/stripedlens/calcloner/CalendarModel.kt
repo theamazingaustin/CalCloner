@@ -16,6 +16,12 @@ data class SyncReminder(
     val method: Int
 )
 
+data class SyncAttendee(
+    val name: String?,
+    val email: String? = null,
+    val status: Int = 0
+)
+
 data class SyncEvent(
     val id: Long,
     val title: String?,
@@ -34,7 +40,8 @@ data class SyncEvent(
     val reminders: List<SyncReminder> = emptyList(),
     val syncId: String? = null,
     val availability: Int? = null,
-    val exdate: String? = null
+    val exdate: String? = null,
+    val attendees: List<SyncAttendee> = emptyList()
 )
 
 data class SyncResult(
@@ -70,6 +77,8 @@ data class SyncPair(
     val customAvailability: Int? = null,
     val syncStatus: Boolean = true,
     val customStatus: Int? = null,
+    val syncAttendees: Boolean = false,
+    val attendeesPlacement: String = "END",
     val lastSyncTime: Long? = null,
     val lastSyncStatus: String? = null,
     val lastInsertedCount: Int = 0,
@@ -122,6 +131,8 @@ data class SyncPair(
         if (customAvailability != null) put("customAvailability", customAvailability)
         put("syncStatus", syncStatus)
         if (customStatus != null) put("customStatus", customStatus)
+        put("syncAttendees", syncAttendees)
+        put("attendeesPlacement", attendeesPlacement)
         if (lastSyncTime != null) put("lastSyncTime", lastSyncTime)
         if (lastSyncStatus != null) put("lastSyncStatus", lastSyncStatus)
         put("lastInsertedCount", lastInsertedCount)
@@ -154,7 +165,9 @@ data class SyncPair(
             syncAvailability: Boolean = true,
             customAvailability: Int? = null,
             syncStatus: Boolean = true,
-            customStatus: Int? = null
+            customStatus: Int? = null,
+            syncAttendees: Boolean = false,
+            attendeesPlacement: String = "END"
         ): SyncPair = SyncPair(
             id = java.util.UUID.randomUUID().toString(),
             nickname = nickname,
@@ -179,7 +192,9 @@ data class SyncPair(
             syncAvailability = syncAvailability,
             customAvailability = customAvailability,
             syncStatus = syncStatus,
-            customStatus = customStatus
+            customStatus = customStatus,
+            syncAttendees = syncAttendees,
+            attendeesPlacement = attendeesPlacement
         )
 
         fun fromJson(json: org.json.JSONObject): SyncPair = SyncPair(
@@ -207,6 +222,8 @@ data class SyncPair(
             customAvailability = if (json.has("customAvailability") && !json.isNull("customAvailability")) json.getInt("customAvailability") else null,
             syncStatus = json.optBoolean("syncStatus", true),
             customStatus = if (json.has("customStatus") && !json.isNull("customStatus")) json.getInt("customStatus") else null,
+            syncAttendees = json.optBoolean("syncAttendees", false),
+            attendeesPlacement = json.optString("attendeesPlacement", "END"),
             lastSyncTime = if (json.has("lastSyncTime") && !json.isNull("lastSyncTime")) json.getLong("lastSyncTime") else null,
             lastSyncStatus = if (json.has("lastSyncStatus") && !json.isNull("lastSyncStatus")) json.getString("lastSyncStatus") else null,
             lastInsertedCount = json.optInt("lastInsertedCount", 0),

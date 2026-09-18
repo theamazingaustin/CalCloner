@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
@@ -147,7 +148,9 @@ private fun FieldAccordionRow(
                 Switch(
                     checked = checked,
                     onCheckedChange = onCheckedChange,
-                    modifier = Modifier.height(24.dp)
+                    modifier = Modifier
+                        .scale(0.85f)
+                        .height(24.dp)
                 )
                 if (hasSubOptions) {
                     IconButton(
@@ -221,6 +224,10 @@ fun SyncFieldOptionsCard(
     onSyncStatusChange: (Boolean) -> Unit,
     customStatus: Int? = null,
     onCustomStatusChange: (Int?) -> Unit = {},
+    syncAttendees: Boolean = false,
+    onSyncAttendeesChange: (Boolean) -> Unit = {},
+    attendeesPlacement: String = "END",
+    onAttendeesPlacementChange: (String) -> Unit = {},
     accentColor: Color = TitaniumMint.Mint400,
     modifier: Modifier = Modifier
 ) {
@@ -229,8 +236,9 @@ fun SyncFieldOptionsCard(
     // Per-field accordion states
     var titleExpanded by remember { mutableStateOf(false) }
     var descriptionExpanded by remember { mutableStateOf(false) }
-    var locationExpanded by remember { mutableStateOf(false) }
     var availabilityExpanded by remember { mutableStateOf(false) }
+    var attendeesExpanded by remember { mutableStateOf(false) }
+    var locationExpanded by remember { mutableStateOf(false) }
     var statusExpanded by remember { mutableStateOf(false) }
 
     // Real-time validation: Title is required if mirroring is turned off
@@ -517,36 +525,7 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 3. LOCATION ACCORDION
-                    FieldAccordionRow(
-                        title = "Location",
-                        subtitle = if (syncLocation) "Mirror event address or video links" else "Fixed location or omit",
-                        icon = Icons.Default.LocationOn,
-                        checked = syncLocation,
-                        isExpanded = locationExpanded,
-                        onExpandToggle = { locationExpanded = !locationExpanded },
-                        hasSubOptions = !syncLocation,
-                        accentColor = accentColor,
-                        onCheckedChange = onSyncLocationChange
-                    ) {
-                        OutlinedTextField(
-                            value = customLocation,
-                            onValueChange = onCustomLocationChange,
-                            label = { Text("Fixed Location (Optional)", fontSize = 12.sp) },
-                            placeholder = { Text("e.g. Remote / Teleconference", fontSize = 12.sp) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = accentColor,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
-
-                    // 4. AVAILABILITY ACCORDION
+                    // 3. AVAILABILITY ACCORDION
                     FieldAccordionRow(
                         title = "Availability (Free / Busy)",
                         subtitle = if (syncAvailability) "Mirror source availability status" else "Fixed availability override",
@@ -601,7 +580,89 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 5. REMINDERS (Simple Toggle)
+                    // 4. ATTENDEES & INVITEES
+                    FieldAccordionRow(
+                        title = "Attendees & Invitees",
+                        subtitle = if (syncAttendees) "Embed attendee list in event description" else "Omit attendee names from clone",
+                        icon = Icons.Default.Group,
+                        checked = syncAttendees,
+                        isExpanded = attendeesExpanded,
+                        onExpandToggle = { attendeesExpanded = !attendeesExpanded },
+                        hasSubOptions = syncAttendees,
+                        accentColor = accentColor,
+                        onCheckedChange = onSyncAttendeesChange
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Placement in Event Description:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = attendeesPlacement != "START",
+                                    onClick = { onAttendeesPlacementChange("END") },
+                                    label = { Text("End of description (Default)") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                                FilterChip(
+                                    selected = attendeesPlacement == "START",
+                                    onClick = { onAttendeesPlacementChange("START") },
+                                    label = { Text("Beginning of description") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = accentColor
+                                    )
+                                )
+                            }
+                            Text(
+                                text = "Invite Shield: Guest names and RSVP statuses are embedded into the description text, preventing upstream calendar providers (Google/Exchange) from sending duplicate meeting invites or failing sync.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
+
+                    // 5. LOCATION ACCORDION
+                    FieldAccordionRow(
+                        title = "Location",
+                        subtitle = if (syncLocation) "Mirror event address or video links" else "Fixed location or omit",
+                        icon = Icons.Default.LocationOn,
+                        checked = syncLocation,
+                        isExpanded = locationExpanded,
+                        onExpandToggle = { locationExpanded = !locationExpanded },
+                        hasSubOptions = !syncLocation,
+                        accentColor = accentColor,
+                        onCheckedChange = onSyncLocationChange
+                    ) {
+                        OutlinedTextField(
+                            value = customLocation,
+                            onValueChange = onCustomLocationChange,
+                            label = { Text("Fixed Location (Optional)", fontSize = 12.sp) },
+                            placeholder = { Text("e.g. Remote / Teleconference", fontSize = 12.sp) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accentColor,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
+
+                    // 6. REMINDERS (Simple Toggle)
                     FieldAccordionRow(
                         title = "Reminders & Notifications",
                         subtitle = "Mirror alarms, alert popups, and advance notifications",
@@ -616,7 +677,7 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 6. STATUS ACCORDION
+                    // 7. STATUS ACCORDION
                     FieldAccordionRow(
                         title = "Event Status",
                         subtitle = if (syncStatus) "Mirror Confirmed, Tentative, or Canceled status" else "Fixed status override",
@@ -668,72 +729,6 @@ fun SyncFieldOptionsCard(
                                 )
                             }
                         }
-                    }
-
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
-
-                    // 7. ATTENDEES & INVITEES (Coming Soon Preview)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Group,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Column {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = "Attendees & Invitees",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Normal,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                                        border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.35f))
-                                    ) {
-                                        Text(
-                                            text = "COMING SOON",
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 9.sp,
-                                            color = TitaniumMint.Amber400,
-                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = "Replicate meeting guests with safety Invite Shield (prevents sending duplicate email invites)",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = false,
-                            onCheckedChange = null,
-                            enabled = false,
-                            modifier = Modifier.height(24.dp)
-                        )
                     }
                 }
             }

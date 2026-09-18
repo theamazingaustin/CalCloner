@@ -216,6 +216,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 customAvailability = pair.customAvailability,
                                 syncStatus = pair.syncStatus,
                                 customStatus = pair.customStatus,
+                                syncAttendees = pair.syncAttendees,
+                                attendeesPlacement = pair.attendeesPlacement,
                                 activePairIds = state.syncPairs.map { it.id }.toSet(),
                                 onProgress = { cur, tot, msg ->
                                     val pairBase = index.toFloat() / totalPairs
@@ -332,6 +334,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         customAvailability = pair.customAvailability,
                         syncStatus = pair.syncStatus,
                         customStatus = pair.customStatus,
+                        syncAttendees = pair.syncAttendees,
+                        attendeesPlacement = pair.attendeesPlacement,
                         activePairIds = state.syncPairs.map { it.id }.toSet(),
                         onProgress = { cur, tot, msg ->
                             _uiState.update {

@@ -7,6 +7,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.os.Bundle
 import android.provider.CalendarContract
+import com.stripedlens.calcloner.SyncAttendee
 import com.stripedlens.calcloner.SyncEvent
 import com.stripedlens.calcloner.SyncReminder
 import com.stripedlens.calcloner.SyncResult
@@ -172,6 +173,28 @@ object CalendarEventWriter {
         } catch (_: Exception) {}
     }
 
+    internal fun formatAttendeesBlock(attendees: List<SyncAttendee>): String {
+        if (attendees.isEmpty()) return ""
+        val lines = attendees.mapNotNull { att ->
+            val displayName = when {
+                !att.name.isNullOrBlank() -> att.name.trim()
+                !att.email.isNullOrBlank() -> att.email.substringBefore('@').trim()
+                else -> null
+            } ?: return@mapNotNull null
+
+            val statusText = when (att.status) {
+                CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED -> "Accepted"
+                CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED -> "Declined"
+                CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE -> "Tentative"
+                CalendarContract.Attendees.ATTENDEE_STATUS_INVITED -> "Invited"
+                else -> null
+            }
+            if (statusText != null) "• $displayName ($statusText)" else "• $displayName"
+        }
+        if (lines.isEmpty()) return ""
+        return "Attendees:\n" + lines.joinToString("\n")
+    }
+
     internal fun buildEventValues(
         context: Context,
         event: SyncEvent,
@@ -193,7 +216,9 @@ object CalendarEventWriter {
         syncAvailability: Boolean = true,
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
-        customStatus: Int? = null
+        customStatus: Int? = null,
+        syncAttendees: Boolean = false,
+        attendeesPlacement: String = "END"
     ): ContentValues {
         return ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, toCalendarId)
@@ -216,39 +241,43 @@ object CalendarEventWriter {
 
             // Description Tracking Tag: Append [CalCloner-ID: <pairId>:<id>] for cross-cloud persistence
             val trackingTag = if (pairId != null) "[CalCloner-ID: ${pairId}:${event.id}]" else "[CalCloner-ID: ${event.id}]"
+            val attBlock = if (syncAttendees && event.attendees.isNotEmpty()) {
+                formatAttendeesBlock(event.attendees)
+            } else ""
+
             val fullDescription = if (syncDescription) {
-                val baseDesc = event.description ?: ""
+                val cleanBaseDesc = (event.description ?: "")
+                    .replace(CALCLONER_TAG_REPLACE_REGEX, "")
+                    .replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, "")
+                    .trim()
+                val descWithAttendees = when {
+                    attBlock.isEmpty() -> cleanBaseDesc
+                    cleanBaseDesc.isEmpty() -> attBlock
+                    attendeesPlacement == "START" -> "$attBlock\n\n$cleanBaseDesc"
+                    else -> "$cleanBaseDesc\n\n$attBlock"
+                }
                 val pre = if (!descriptionPrefix.isNullOrEmpty()) "${descriptionPrefix}\n" else ""
                 val suf = if (!descriptionSuffix.isNullOrEmpty()) "\n${descriptionSuffix}" else ""
-                val content = if (baseDesc.isNotEmpty()) {
-                    "$pre$baseDesc$suf"
+                val content = if (descWithAttendees.isNotEmpty()) {
+                    "$pre$descWithAttendees$suf"
                 } else if (pre.isNotEmpty() || suf.isNotEmpty()) {
                     "$pre$suf".trim()
                 } else {
                     ""
                 }
-                when {
-                    content.isEmpty() -> trackingTag
-                    content.contains("[CalCloner-ID:") -> {
-                        content.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
-                    }
-                    content.contains("[CalClone-ID:") -> {
-                        content.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
-                    }
-                    else -> "$content\n\n$trackingTag"
-                }
+                if (content.isEmpty()) trackingTag else "$content\n\n$trackingTag"
             } else {
-                val fixed = customDescription?.trim()
-                when {
-                    fixed.isNullOrEmpty() -> trackingTag
-                    fixed.contains("[CalCloner-ID:") -> {
-                        fixed.replace(CALCLONER_TAG_REPLACE_REGEX, trackingTag)
-                    }
-                    fixed.contains("[CalClone-ID:") -> {
-                        fixed.replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, trackingTag)
-                    }
-                    else -> "$fixed\n\n$trackingTag"
+                val cleanFixed = (customDescription?.trim() ?: "")
+                    .replace(CALCLONER_TAG_REPLACE_REGEX, "")
+                    .replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, "")
+                    .trim()
+                val descWithAttendees = when {
+                    attBlock.isEmpty() -> cleanFixed
+                    cleanFixed.isEmpty() -> attBlock
+                    attendeesPlacement == "START" -> "$attBlock\n\n$cleanFixed"
+                    else -> "$cleanFixed\n\n$attBlock"
                 }
+                if (descWithAttendees.isEmpty()) trackingTag else "$descWithAttendees\n\n$trackingTag"
             }
             put(CalendarContract.Events.DESCRIPTION, fullDescription)
 
@@ -375,6 +404,8 @@ object CalendarEventWriter {
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
         customStatus: Int? = null,
+        syncAttendees: Boolean = false,
+        attendeesPlacement: String = "END",
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
         onSelfWrite: (() -> Unit)? = null
@@ -642,7 +673,9 @@ object CalendarEventWriter {
                 syncAvailability = syncAvailability,
                 customAvailability = customAvailability,
                 syncStatus = syncStatus,
-                customStatus = customStatus
+                customStatus = customStatus,
+                syncAttendees = syncAttendees,
+                attendeesPlacement = attendeesPlacement
             )
             val sigKey = "${event.title ?: ""}|${event.dtStart}"
             val existingMeta = existingTargetEvents[event.id] ?: existingTargetBySignature[sigKey]

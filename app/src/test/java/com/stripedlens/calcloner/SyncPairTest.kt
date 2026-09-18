@@ -256,4 +256,58 @@ class SyncPairTest {
         assertTrue(fixedPair.isConfigValidForSync)
         assertFalse(fixedPair.hasSyncError)
     }
+
+    @Test
+    fun testSyncAttendeesSerializationRoundtrip() {
+        val pairWithAttendees = SyncPair(
+            id = "pair-att",
+            fromCalendarId = 1L,
+            fromCalendarName = "Source",
+            toCalendarId = 2L,
+            toCalendarName = "Target",
+            syncAttendees = true,
+            attendeesPlacement = "START"
+        )
+
+        val json = pairWithAttendees.toJson().toString()
+        val restored = SyncPair.fromJson(org.json.JSONObject(json))
+
+        assertTrue(restored.syncAttendees)
+        assertEquals("START", restored.attendeesPlacement)
+
+        // Test default values
+        val defaultPair = SyncPair.fromJson(org.json.JSONObject("{}").apply {
+            put("fromCalendarId", 1L)
+            put("toCalendarId", 2L)
+        })
+        assertFalse(defaultPair.syncAttendees)
+        assertEquals("END", defaultPair.attendeesPlacement)
+    }
+
+    @Test
+    fun testFormatAttendeesBlock() {
+        val attendees = listOf(
+            com.stripedlens.calcloner.SyncAttendee(
+                name = "Alice Smith",
+                email = "alice@example.com",
+                status = 1 // ATTENDEE_STATUS_ACCEPTED
+            ),
+            com.stripedlens.calcloner.SyncAttendee(
+                name = null,
+                email = "bob@example.com",
+                status = 4 // ATTENDEE_STATUS_TENTATIVE
+            ),
+            com.stripedlens.calcloner.SyncAttendee(
+                name = "Charlie Brown",
+                email = null,
+                status = 2 // ATTENDEE_STATUS_DECLINED
+            )
+        )
+
+        val formatted = com.stripedlens.calcloner.engine.CalendarEventWriter.formatAttendeesBlock(attendees)
+        assertTrue(formatted.startsWith("Attendees:\n"))
+        assertTrue(formatted.contains("• Alice Smith (Accepted)"))
+        assertTrue(formatted.contains("• bob (Tentative)"))
+        assertTrue(formatted.contains("• Charlie Brown (Declined)"))
+    }
 }

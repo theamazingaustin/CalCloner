@@ -42,6 +42,7 @@ no API key, $0).
 
 ## Release & Version Tagging Rules
 Whenever committing and pushing release/feature changes intended for GitHub builds, **ALWAYS** create and push an annotated or lightweight git tag starting with `v` (e.g. `v<version>-<month>.<day>-<buildNumber>`). The GitHub Actions workflow specifically listens on `tags: ['v*']` to build and publish the release APK.
+After pushing a release tag, launch `powershell -ExecutionPolicy Bypass -File .\scripts\monitor_release.ps1` as an async background task via `run_command` (with `IsDaemon: false`). Stop calling tools to sleep until the task completes reactively, then present the resulting APK download URL directly to the user with zero token waste.
 
 ## Strict Tooling & Architecture Rules: Graft & Ponytail
 

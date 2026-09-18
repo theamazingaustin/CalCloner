@@ -1,4 +1,4 @@
-﻿package com.stripedlens.calcloner.ui.components.sheets
+package com.stripedlens.calcloner.ui.components.sheets
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -26,6 +26,9 @@ fun SyncPairSheetHeader(
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val contentColor = Color.White
+    val subheadColor = Color.White.copy(alpha = 0.85f)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -45,7 +48,7 @@ fun SyncPairSheetHeader(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = Color(0xFF09090B)
+                    tint = contentColor
                 )
             }
             Column {
@@ -53,12 +56,12 @@ fun SyncPairSheetHeader(
                     text = if (isEditing) "Edit Sync Configuration" else "New Sync Configuration",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF09090B)
+                    color = contentColor
                 )
                 Text(
                     text = if (isEditing) "Configure Route, Window & Filters" else "Map source calendar to target clone",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF09090B).copy(alpha = 0.8f),
+                    color = subheadColor,
                     fontSize = 11.sp
                 )
             }
@@ -73,7 +76,7 @@ fun SyncPairSheetHeader(
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF09090B)
+                color = contentColor
             )
             Switch(
                 checked = isEnabled,
@@ -83,9 +86,9 @@ fun SyncPairSheetHeader(
                     .height(20.dp),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF09090B).copy(alpha = 0.35f),
-                    uncheckedThumbColor = Color(0xFF09090B),
-                    uncheckedTrackColor = Color(0xFF09090B).copy(alpha = 0.2f)
+                    checkedTrackColor = Color.White.copy(alpha = 0.45f),
+                    uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.25f)
                 )
             )
         }

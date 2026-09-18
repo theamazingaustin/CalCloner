@@ -99,15 +99,15 @@ fun SyncOverviewCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(7.dp),
-                    color = TitaniumMint.Mint500.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.25f)),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
                     modifier = Modifier.size(28.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = null,
-                            tint = TitaniumMint.Mint400,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -137,14 +137,15 @@ fun SyncOverviewCard(
             )
         }
 
+        val primaryColor = MaterialTheme.colorScheme.primary
         val syncAllBorderColor = androidx.compose.ui.graphics.lerp(
-            TitaniumMint.Mint500.copy(alpha = 0.3f),
-            TitaniumMint.Mint400,
+            primaryColor.copy(alpha = 0.35f),
+            primaryColor,
             syncAllGlowAnim.value
         )
         val syncAllBgColor = androidx.compose.ui.graphics.lerp(
-            TitaniumMint.Mint500.copy(alpha = 0.12f),
-            TitaniumMint.Mint500.copy(alpha = 0.28f),
+            primaryColor.copy(alpha = 0.12f),
+            primaryColor.copy(alpha = 0.24f),
             syncAllGlowAnim.value
         )
 
@@ -157,7 +158,7 @@ fun SyncOverviewCard(
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = syncAllBgColor,
-                contentColor = TitaniumMint.Mint400
+                contentColor = primaryColor
             ),
             border = BorderStroke((1f + syncAllGlowAnim.value).dp, syncAllBorderColor)
         ) {

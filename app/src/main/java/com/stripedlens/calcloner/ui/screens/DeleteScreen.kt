@@ -155,7 +155,7 @@ fun DeleteScreen(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TitaniumMint.Mint400,
+                    color = MaterialTheme.colorScheme.primary,
                     letterSpacing = 0.5.sp
                 )
 
@@ -214,7 +214,7 @@ fun DeleteScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isStep2Enabled) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        color = if (isStep2Enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         letterSpacing = 0.5.sp
                     )
                     if (!isStep2Enabled) {
@@ -238,16 +238,16 @@ fun DeleteScreen(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
-                            TitaniumMint.Mint500.copy(alpha = 0.08f)
+                            TitaniumMint.Mint500.copy(alpha = 0.12f)
                         } else {
-                            MaterialTheme.colorScheme.background
+                            MaterialTheme.colorScheme.surface
                         },
                         border = BorderStroke(
                             1.dp,
                             if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
-                                TitaniumMint.Mint500.copy(alpha = 0.6f)
+                                TitaniumMint.Mint500
                             } else {
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                TitaniumMint.Mint500.copy(alpha = 0.25f)
                             }
                         ),
                         modifier = Modifier
@@ -266,7 +266,7 @@ fun DeleteScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             RadioButton(
-                                selected = uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED,
+                                selected = isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED,
                                 onClick = {
                                     if (isStep2Enabled) {
                                         onOperationTypeSelected(DeleteOperationType.PURGE_CLONED)
@@ -277,7 +277,10 @@ fun DeleteScreen(
                                     }
                                 },
                                 enabled = isStep2Enabled,
-                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Mint400)
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = TitaniumMint.Mint500,
+                                    unselectedColor = TitaniumMint.Mint500.copy(alpha = 0.6f)
+                                )
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
@@ -285,9 +288,9 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
-                                        TitaniumMint.Mint400
+                                        TitaniumMint.Mint500
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface
+                                        TitaniumMint.Mint600
                                     }
                                 )
                                 Text(
@@ -301,7 +304,7 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TitaniumMint.Mint400,
+                                    color = TitaniumMint.Mint500,
                                     modifier = Modifier
                                         .clickable(enabled = isStep2Enabled) {
                                             purgeClonedExpanded = !purgeClonedExpanded
@@ -343,20 +346,20 @@ fun DeleteScreen(
                         }
                     }
 
-                    // Option B: Clear All Events
+                    // Option B: Clear All Events (Amber / Warning Theme)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
-                            TitaniumMint.Amber500.copy(alpha = 0.08f)
+                            TitaniumMint.Amber500.copy(alpha = 0.12f)
                         } else {
-                            MaterialTheme.colorScheme.background
+                            MaterialTheme.colorScheme.surface
                         },
                         border = BorderStroke(
                             1.dp,
                             if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
-                                TitaniumMint.Amber500.copy(alpha = 0.6f)
+                                TitaniumMint.Amber500
                             } else {
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                TitaniumMint.Amber500.copy(alpha = 0.35f)
                             }
                         ),
                         modifier = Modifier
@@ -375,7 +378,7 @@ fun DeleteScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             RadioButton(
-                                selected = uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL,
+                                selected = isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL,
                                 onClick = {
                                     if (isStep2Enabled) {
                                         onOperationTypeSelected(DeleteOperationType.CLEAR_ALL)
@@ -386,7 +389,10 @@ fun DeleteScreen(
                                     }
                                 },
                                 enabled = isStep2Enabled,
-                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Amber400)
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = TitaniumMint.Amber500,
+                                    unselectedColor = TitaniumMint.Amber500.copy(alpha = 0.6f)
+                                )
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
@@ -394,9 +400,9 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
-                                        TitaniumMint.Amber400
+                                        TitaniumMint.Amber500
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface
+                                        TitaniumMint.Amber600
                                     }
                                 )
                                 Text(
@@ -410,7 +416,7 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TitaniumMint.Amber400,
+                                    color = TitaniumMint.Amber500,
                                     modifier = Modifier
                                         .clickable(enabled = isStep2Enabled) {
                                             clearAllExpanded = !clearAllExpanded
@@ -434,13 +440,13 @@ fun DeleteScreen(
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Text(
-                                                text = "Mechanism: Deletes all active events on this specific calendar cached in the local database.",
+                                                text = "Mechanism: Queries all events where CALENDAR_ID matches the selected calendar, then deletes each via ContentResolver.delete with standard cloud-sync enabled (CALLER_IS_SYNC_ADAPTER = false).",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 15.sp
                                             )
                                             Text(
-                                                text = "• Scope: Targets 100% of events on this calendar (both CalCloner clones and personal events). The source calendar is untouched.\n• Cloud Sync: Queues deletions for standard background upload to Google Calendar or Exchange.\n• Note: Operates on currently cached device events. To clean up dead tombstone records after mass deletions, use the Database Optimization tool below.\n• Best For: Emptying a dedicated clone calendar before setting up a fresh sync.",
+                                                text = "• Scope: Wipes all events in this calendar regardless of whether they were created by CalCloner or manually added.\n• Cloud Sync: Preserves Android sync provider deleted tombstones so downstream servers (Google Calendar, Outlook) process the deletions cleanly.\n• Best For: Emptying a target calendar before reconfiguring sync pairs, or resetting a shared schedule.",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 15.sp
@@ -456,16 +462,16 @@ fun DeleteScreen(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
-                            TitaniumMint.Orange500.copy(alpha = 0.08f)
+                            TitaniumMint.Orange500.copy(alpha = 0.12f)
                         } else {
-                            MaterialTheme.colorScheme.background
+                            MaterialTheme.colorScheme.surface
                         },
                         border = BorderStroke(
                             1.dp,
                             if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
-                                TitaniumMint.Orange500.copy(alpha = 0.6f)
+                                TitaniumMint.Orange500
                             } else {
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                TitaniumMint.Orange500.copy(alpha = 0.35f)
                             }
                         ),
                         modifier = Modifier
@@ -484,7 +490,7 @@ fun DeleteScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             RadioButton(
-                                selected = uiState.deleteOperationType == DeleteOperationType.WIPE_ALL,
+                                selected = isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL,
                                 onClick = {
                                     if (isStep2Enabled) {
                                         onOperationTypeSelected(DeleteOperationType.WIPE_ALL)
@@ -495,7 +501,10 @@ fun DeleteScreen(
                                     }
                                 },
                                 enabled = isStep2Enabled,
-                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Orange400)
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = TitaniumMint.Orange500,
+                                    unselectedColor = TitaniumMint.Orange500.copy(alpha = 0.6f)
+                                )
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
@@ -503,9 +512,9 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
-                                        TitaniumMint.Orange400
+                                        TitaniumMint.Orange500
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface
+                                        TitaniumMint.Orange600
                                     }
                                 )
                                 Text(
@@ -519,7 +528,7 @@ fun DeleteScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TitaniumMint.Orange400,
+                                    color = TitaniumMint.Orange500,
                                     modifier = Modifier
                                         .clickable(enabled = isStep2Enabled) {
                                             wipeAllExpanded = !wipeAllExpanded
@@ -620,8 +629,8 @@ fun DeleteScreen(
 
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.background,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            color = operationAccentColor.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, operationAccentColor.copy(alpha = 0.35f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
@@ -646,13 +655,13 @@ fun DeleteScreen(
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = "Confirmed",
-                                        tint = TitaniumMint.Mint400
+                                        tint = operationAccentColor
                                     )
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = if (isConfirmed) TitaniumMint.Mint400 else MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = if (isConfirmed) TitaniumMint.Mint400 else MaterialTheme.colorScheme.outline
+                                focusedBorderColor = if (isConfirmed) operationAccentColor else MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (isConfirmed) operationAccentColor else MaterialTheme.colorScheme.outline
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -662,7 +671,7 @@ fun DeleteScreen(
                                 text = "Phrase does not match yet.",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontFamily = FontFamily.Monospace,
-                                color = TitaniumMint.Amber400,
+                                color = MaterialTheme.colorScheme.tertiary,
                                 fontSize = 11.sp
                             )
                         }
@@ -727,7 +736,7 @@ fun DeleteScreen(
                     Icon(
                         imageVector = Icons.Default.CleaningServices,
                         contentDescription = null,
-                        tint = TitaniumMint.Mint400,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -735,7 +744,7 @@ fun DeleteScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TitaniumMint.Mint400,
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -753,9 +762,9 @@ fun DeleteScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = TitaniumMint.Mint400
+                        contentColor = MaterialTheme.colorScheme.primary
                     ),
-                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                 ) {
                     Icon(
                         imageVector = Icons.Default.CleaningServices,
@@ -810,7 +819,7 @@ fun DeleteScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
-                                color = TitaniumMint.Mint400
+                                color = MaterialTheme.colorScheme.primary
                             )
                         } else {
                             Icon(
@@ -823,7 +832,7 @@ fun DeleteScreen(
                                 tint = if (uiState.progressStatusText.contains("failed", ignoreCase = true)) {
                                     MaterialTheme.colorScheme.error
                                 } else {
-                                    TitaniumMint.Mint400
+                                    MaterialTheme.colorScheme.primary
                                 },
                                 modifier = Modifier.size(18.dp)
                             )

@@ -1,4 +1,4 @@
-﻿package com.stripedlens.calcloner.ui.components
+package com.stripedlens.calcloner.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -84,7 +84,7 @@ fun CalClonerTopBar(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v",
+                            text = "v${com.stripedlens.calcloner.BuildConfig.VERSION_NAME}",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             color = TitaniumMint.Mint400

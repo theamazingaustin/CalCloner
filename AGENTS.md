@@ -41,8 +41,8 @@ no API key, $0).
 <!-- graft:end -->
 
 ## Release & Version Tagging Rules
-Whenever committing and pushing release/feature changes intended for GitHub builds, **ALWAYS** create and push an annotated or lightweight git tag starting with `v` (e.g. `v<version>-<month>.<day>-<buildNumber>`). The GitHub Actions workflow specifically listens on `tags: ['v*']` to build and publish the release APK.
-After pushing a release tag, launch `powershell -ExecutionPolicy Bypass -File .\scripts\monitor_release.ps1` as an async background task via `run_command` (with `IsDaemon: false`). Stop calling tools to sleep until the task completes reactively, then present the resulting APK download URL directly to the user with zero token waste.
+- **Pre-commit verification**: Run `powershell -ExecutionPolicy Bypass -File .\scripts\verify_build.ps1` to verify builds and test suites with zero log noise and automatic `JAVA_HOME` resolution.
+- **Shipping releases**: Whenever committing and pushing release changes intended for GitHub builds, run `powershell -ExecutionPolicy Bypass -File .\scripts\ship.ps1 -Message "<commit message>"` as an async background task via `run_command` (with `IsDaemon: false`). This automatically increments the day's release tag (`v<version>-<month>.<day>-<buildNumber>`), pushes `main` with tags, and monitors the GitHub Actions build reactively. Stop calling tools until complete, then present the resulting APK download URL directly to the user.
 
 ## Strict Tooling & Architecture Rules: Graft & Ponytail
 

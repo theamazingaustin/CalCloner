@@ -1,4 +1,4 @@
-﻿package com.stripedlens.calcloner.ui.theme
+package com.stripedlens.calcloner.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -23,6 +23,11 @@ object Palette {
     val Amber400 = Color(0xFFFBBF24)
     val Amber500 = Color(0xFFF59E0B)
     val Amber600 = Color(0xFFD97706)
+
+    // Orange / Warm Tangerine
+    val Orange400 = Color(0xFFFB923C)
+    val Orange500 = Color(0xFFF97316)
+    val Orange600 = Color(0xFFEA580C)
 
     // Rose / Crimson
     val Rose400 = Color(0xFFFB7185)

@@ -18,6 +18,8 @@ object TitaniumMint {
     val Mint600 = Palette.Mint600
     val Amber400 = Palette.Amber400
     val Amber500 = Palette.Amber500
+    val Orange400 = Palette.Orange400
+    val Orange500 = Palette.Orange500
     val Rose400 = Palette.Rose400
     val Rose500 = Palette.Rose500
     val CarbonOnyx = Palette.Zinc950

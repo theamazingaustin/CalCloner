@@ -17,8 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.ui.components.CalendarDropdown
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
@@ -45,11 +49,28 @@ fun DeleteScreen(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
     val selectedCalendar = uiState.selectedDeleteCalendar
     val requiredPhrase = selectedCalendar?.let { "delete ${it.displayName.trim()}" } ?: ""
     val isConfirmed = selectedCalendar != null &&
             requiredPhrase.isNotEmpty() &&
             uiState.deleteConfirmationText.trim().equals(requiredPhrase, ignoreCase = true)
+
+    // Y-coordinate tracking for smooth scrolling
+    var step2TopY by remember { mutableStateOf(0f) }
+    var step3TopY by remember { mutableStateOf(0f) }
+
+    // Track technical details expanded state for each operation
+    var purgeClonedExpanded by remember { mutableStateOf(false) }
+    var clearAllExpanded by remember { mutableStateOf(false) }
+    var wipeAllExpanded by remember { mutableStateOf(false) }
+
+    // Dynamic accent color based on selected operation
+    val operationAccentColor = when (uiState.deleteOperationType) {
+        DeleteOperationType.PURGE_CLONED -> TitaniumMint.Mint400
+        DeleteOperationType.CLEAR_ALL -> TitaniumMint.Amber400
+        DeleteOperationType.WIPE_ALL -> TitaniumMint.Orange500
+    }
 
     Column(
         modifier = modifier
@@ -77,15 +98,15 @@ fun DeleteScreen(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = TitaniumMint.Rose500.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, TitaniumMint.Rose500.copy(alpha = 0.3f)),
+                        color = TitaniumMint.Orange500.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, TitaniumMint.Orange500.copy(alpha = 0.3f)),
                         modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
                                 contentDescription = null,
-                                tint = TitaniumMint.Rose400,
+                                tint = TitaniumMint.Orange400,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -102,7 +123,7 @@ fun DeleteScreen(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TitaniumMint.Rose400,
+                            color = TitaniumMint.Orange400,
                             letterSpacing = 0.8.sp
                         )
                     }
@@ -143,7 +164,15 @@ fun DeleteScreen(
                     calendars = uiState.availableCalendars,
                     selectedCalendar = selectedCalendar,
                     filterWritable = true,
-                    onCalendarSelected = onCalendarSelected
+                    onCalendarSelected = { cal ->
+                        onCalendarSelected(cal)
+                        if (cal != null) {
+                            scope.launch {
+                                kotlinx.coroutines.delay(100L)
+                                scrollState.animateScrollTo(step2TopY.toInt().coerceAtLeast(0))
+                            }
+                        }
+                    }
                 )
 
                 if (selectedCalendar != null) {
@@ -158,8 +187,13 @@ fun DeleteScreen(
         }
 
         // ── Step 2: Select Operation Mode ────────────────────────────────────────
+        val isStep2Enabled = selectedCalendar != null
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    step2TopY = coordinates.positionInParent().y
+                },
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -170,206 +204,360 @@ fun DeleteScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "STEP 2: SELECT OPERATION TYPE",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TitaniumMint.Mint400,
-                    letterSpacing = 0.5.sp
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "STEP 2: SELECT OPERATION TYPE",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isStep2Enabled) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        letterSpacing = 0.5.sp
+                    )
+                    if (!isStep2Enabled) {
+                        Text(
+                            text = "SELECT CALENDAR FIRST",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
 
-                // Option A: Purge Cloned Events Only (Default)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
-                        TitaniumMint.Mint500.copy(alpha = 0.08f)
-                    } else {
-                        MaterialTheme.colorScheme.background
-                    },
-                    border = BorderStroke(
-                        1.dp,
-                        if (uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
-                            TitaniumMint.Mint500.copy(alpha = 0.5f)
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        }
-                    ),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOperationTypeSelected(DeleteOperationType.PURGE_CLONED) }
+                        .alpha(if (isStep2Enabled) 1f else 0.42f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    // Option A: Purge Cloned Events Only
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
+                            TitaniumMint.Mint500.copy(alpha = 0.08f)
+                        } else {
+                            MaterialTheme.colorScheme.background
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
+                                TitaniumMint.Mint500.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            }
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isStep2Enabled) {
+                                onOperationTypeSelected(DeleteOperationType.PURGE_CLONED)
+                                scope.launch {
+                                    kotlinx.coroutines.delay(100L)
+                                    scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                }
+                            }
                     ) {
-                        RadioButton(
-                            selected = uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED,
-                            onClick = { onOperationTypeSelected(DeleteOperationType.PURGE_CLONED) },
-                            colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Mint400)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED,
+                                onClick = {
+                                    if (isStep2Enabled) {
+                                        onOperationTypeSelected(DeleteOperationType.PURGE_CLONED)
+                                        scope.launch {
+                                            kotlinx.coroutines.delay(100L)
+                                            scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                        }
+                                    }
+                                },
+                                enabled = isStep2Enabled,
+                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Mint400)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = "Purge Cloned Events Only",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
+                                        TitaniumMint.Mint400
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
                                 )
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = TitaniumMint.Mint500.copy(alpha = 0.15f)
+                                Text(
+                                    text = "Removes only events cloned by CalCloner. Personal and manually created events in this calendar are kept safe.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 16.sp
+                                )
+                                Text(
+                                    text = if (purgeClonedExpanded) "Hide technical details ▲" else "Show technical details ▼",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TitaniumMint.Mint400,
+                                    modifier = Modifier
+                                        .clickable(enabled = isStep2Enabled) {
+                                            purgeClonedExpanded = !purgeClonedExpanded
+                                        }
+                                        .padding(vertical = 2.dp)
+                                )
+                                AnimatedVisibility(
+                                    visible = purgeClonedExpanded,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
                                 ) {
-                                    Text(
-                                        text = "DEFAULT · SAFE",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TitaniumMint.Mint400,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 4.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Mechanism: Scans this calendar's local database for CalCloner tracking metadata (CUSTOM_APP_URI: calcloner://... or [CalCloner-ID: ...]).",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                            Text(
+                                                text = "• Safety: Preserves any events created manually, imported externally, or belonging to other active sync pairs. The source calendar is never touched.\n• Cloud Sync: Marks events for deletion so Android's sync service removes them from Google / Exchange cloud servers.\n• Best For: Routine cleanups, resetting a sync pair, or removing duplicate clones without touching your personal events.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            Text(
-                                text = "Removes only events created and tagged by CalCloner. Organic and manually created events in this calendar are kept safe.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 16.sp
-                            )
                         }
                     }
-                }
 
-                // Option B: Clear All Events (Standard Tombstones)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
-                        TitaniumMint.Amber500.copy(alpha = 0.08f)
-                    } else {
-                        MaterialTheme.colorScheme.background
-                    },
-                    border = BorderStroke(
-                        1.dp,
-                        if (uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
-                            TitaniumMint.Amber500.copy(alpha = 0.5f)
+                    // Option B: Clear All Events
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
+                            TitaniumMint.Amber500.copy(alpha = 0.08f)
                         } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOperationTypeSelected(DeleteOperationType.CLEAR_ALL) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            MaterialTheme.colorScheme.background
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
+                                TitaniumMint.Amber500.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            }
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isStep2Enabled) {
+                                onOperationTypeSelected(DeleteOperationType.CLEAR_ALL)
+                                scope.launch {
+                                    kotlinx.coroutines.delay(100L)
+                                    scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                }
+                            }
                     ) {
-                        RadioButton(
-                            selected = uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL,
-                            onClick = { onOperationTypeSelected(DeleteOperationType.CLEAR_ALL) },
-                            colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Amber400)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL,
+                                onClick = {
+                                    if (isStep2Enabled) {
+                                        onOperationTypeSelected(DeleteOperationType.CLEAR_ALL)
+                                        scope.launch {
+                                            kotlinx.coroutines.delay(100L)
+                                            scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                        }
+                                    }
+                                },
+                                enabled = isStep2Enabled,
+                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Amber400)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = "Clear All Calendar Events",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = TitaniumMint.Amber400
+                                    color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.CLEAR_ALL) {
+                                        TitaniumMint.Amber400
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
                                 )
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = TitaniumMint.Amber500.copy(alpha = 0.15f)
+                                Text(
+                                    text = "Deletes all events currently on this calendar (both cloned and personal) via standard Android cloud sync.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 16.sp
+                                )
+                                Text(
+                                    text = if (clearAllExpanded) "Hide technical details ▲" else "Show technical details ▼",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TitaniumMint.Amber400,
+                                    modifier = Modifier
+                                        .clickable(enabled = isStep2Enabled) {
+                                            clearAllExpanded = !clearAllExpanded
+                                        }
+                                        .padding(vertical = 2.dp)
+                                )
+                                AnimatedVisibility(
+                                    visible = clearAllExpanded,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
                                 ) {
-                                    Text(
-                                        text = "ALL EVENTS",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TitaniumMint.Amber400,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 4.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Mechanism: Deletes all active events on this specific calendar cached in the local database.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                            Text(
+                                                text = "• Scope: Targets 100% of events on this calendar (both CalCloner clones and personal events). The source calendar is untouched.\n• Cloud Sync: Queues deletions for standard background upload to Google Calendar or Exchange.\n• Note: Operates on currently cached device events. To clean up dead tombstone records after mass deletions, use the Database Optimization tool below.\n• Best For: Emptying a dedicated clone calendar before setting up a fresh sync.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            Text(
-                                text = "Deletes all events (organic and cloned) currently in this calendar using standard Android tombstones for cloud sync.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 16.sp
-                            )
                         }
                     }
-                }
 
-                // Option C: Deep Clean & Cloud Wipe (Multi-step)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
-                        TitaniumMint.Rose500.copy(alpha = 0.08f)
-                    } else {
-                        MaterialTheme.colorScheme.background
-                    },
-                    border = BorderStroke(
-                        1.dp,
-                        if (uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
-                            TitaniumMint.Rose500.copy(alpha = 0.5f)
+                    // Option C: Deep Clean & Cloud Wipe (Orange-Red Theme)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
+                            TitaniumMint.Orange500.copy(alpha = 0.08f)
                         } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOperationTypeSelected(DeleteOperationType.WIPE_ALL) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            MaterialTheme.colorScheme.background
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
+                                TitaniumMint.Orange500.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            }
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isStep2Enabled) {
+                                onOperationTypeSelected(DeleteOperationType.WIPE_ALL)
+                                scope.launch {
+                                    kotlinx.coroutines.delay(100L)
+                                    scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                }
+                            }
                     ) {
-                        RadioButton(
-                            selected = uiState.deleteOperationType == DeleteOperationType.WIPE_ALL,
-                            onClick = { onOperationTypeSelected(DeleteOperationType.WIPE_ALL) },
-                            colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Rose400)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = uiState.deleteOperationType == DeleteOperationType.WIPE_ALL,
+                                onClick = {
+                                    if (isStep2Enabled) {
+                                        onOperationTypeSelected(DeleteOperationType.WIPE_ALL)
+                                        scope.launch {
+                                            kotlinx.coroutines.delay(100L)
+                                            scrollState.animateScrollTo(step3TopY.toInt().coerceAtLeast(0))
+                                        }
+                                    }
+                                },
+                                enabled = isStep2Enabled,
+                                colors = RadioButtonDefaults.colors(selectedColor = TitaniumMint.Orange400)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = "Deep Clean & Cloud Wipe",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = TitaniumMint.Rose400
+                                    color = if (isStep2Enabled && uiState.deleteOperationType == DeleteOperationType.WIPE_ALL) {
+                                        TitaniumMint.Orange400
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
                                 )
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = TitaniumMint.Rose500.copy(alpha = 0.2f)
+                                Text(
+                                    text = "Forces a cloud refresh to capture remote events, deletes everything locally, and commands an immediate cloud wipe.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 16.sp
+                                )
+                                Text(
+                                    text = if (wipeAllExpanded) "Hide technical details ▲" else "Show technical details ▼",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TitaniumMint.Orange400,
+                                    modifier = Modifier
+                                        .clickable(enabled = isStep2Enabled) {
+                                            wipeAllExpanded = !wipeAllExpanded
+                                        }
+                                        .padding(vertical = 2.dp)
+                                )
+                                AnimatedVisibility(
+                                    visible = wipeAllExpanded,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
                                 ) {
-                                    Text(
-                                        text = "DEEP WIPE · DESTRUCTIVE",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TitaniumMint.Rose400,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 4.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Mechanism: A 3-phase forced reconciliation cycle to fix desynchronized or stubborn calendars:",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                            Text(
+                                                text = "1. Force Cloud Pull: Toggles sync settings to force Google servers to download all remote and orphaned events to the device.\n2. Full Local Deletion: Queries and batch-deletes all events in this calendar.\n3. Expedited Cloud Override: Dispatches an immediate high-priority sync with the OVERRIDE_TOO_MANY_DELETIONS flag, forcing Google servers to instantly purge the cloud calendar without throttling or safety holds.\n• Best For: Eliminating ghost events, clearing calendar sync drift, or completely resetting a desynced Google Calendar.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            Text(
-                                text = "Forces Google Cloud download to catch remote orphans, erases 100% of events locally, and forces an expedited cloud sync override.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 16.sp
-                            )
                         }
                     }
                 }
@@ -378,12 +566,16 @@ fun DeleteScreen(
 
         // ── Step 3: Safety Confirmation Lock ─────────────────────────────────────
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    step3TopY = coordinates.positionInParent().y
+                },
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(
                 1.dp,
-                if (isConfirmed) TitaniumMint.Rose500.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outlineVariant
+                if (isConfirmed) operationAccentColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outlineVariant
             )
         ) {
             Column(
@@ -399,7 +591,7 @@ fun DeleteScreen(
                     Icon(
                         imageVector = if (isConfirmed) Icons.Default.LockOpen else Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (isConfirmed) TitaniumMint.Rose400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (isConfirmed) operationAccentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -407,7 +599,7 @@ fun DeleteScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isConfirmed) TitaniumMint.Rose400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isConfirmed) operationAccentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -437,7 +629,7 @@ fun DeleteScreen(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
-                                color = TitaniumMint.Rose400,
+                                color = operationAccentColor,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             )
                         }
@@ -483,8 +675,8 @@ fun DeleteScreen(
                         enabled = isConfirmed && !uiState.isOperating,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = TitaniumMint.Rose500,
-                            disabledContainerColor = TitaniumMint.Rose500.copy(alpha = 0.25f),
+                            containerColor = operationAccentColor,
+                            disabledContainerColor = operationAccentColor.copy(alpha = 0.25f),
                             contentColor = Color.White,
                             disabledContentColor = Color.White.copy(alpha = 0.4f)
                         ),

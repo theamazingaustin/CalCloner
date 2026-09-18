@@ -73,6 +73,7 @@ import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.CalClonerTopBar
 import com.stripedlens.calcloner.ui.dialogs.MainDialogHost
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
+import com.stripedlens.calcloner.ui.screens.OneTimeOperationsScreen
 import com.stripedlens.calcloner.ui.screens.SyncScreen
 import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
@@ -384,6 +385,11 @@ fun CalendarSyncApp(
                         onSaveSyncOnLowBattery = { onLow -> viewModel.saveSyncOnLowBattery(onLow) },
                         onOpenBatterySettings = { openBatterySettings() },
                         onRequestPermissions = { requestPermissions() }
+                    )
+                }
+                AppTab.ONE_TIME -> {
+                    OneTimeOperationsScreen(
+                        uiState = uiState
                     )
                 }
                 AppTab.DELETE -> {

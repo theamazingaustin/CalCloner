@@ -5,6 +5,7 @@ import com.stripedlens.calcloner.SyncPair
 
 enum class AppTab {
     SYNC,
+    ONE_TIME,
     DELETE
 }
 

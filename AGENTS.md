@@ -43,3 +43,16 @@ no API key, $0).
 ## Release & Version Tagging Rules
 Whenever committing and pushing release/feature changes intended for GitHub builds, **ALWAYS** create and push an annotated or lightweight git tag starting with `v` (e.g. `v<version>-<month>.<day>-<buildNumber>`). The GitHub Actions workflow specifically listens on `tags: ['v*']` to build and publish the release APK.
 
+## Strict Tooling & Architecture Rules: Graft & Ponytail
+
+### 1. Mandatory Graft Protocol (No Direct Grepping or Blind File Reading)
+- **DO NOT use native `grep_search` or `find_by_name` on indexed project files.** You MUST always use `graft grep "<pattern>"` (or `graft ask "<question>" --source`) via `run_command`.
+- **DO NOT view whole source files with `view_file`** without first running `graft skeleton <file>` or `graft callers <symbol>` to identify the exact line range. Only view the specific targeted line slice when the graft crux isn't sufficient.
+- **Before refactoring or editing any symbol**, run `graft callers <symbol> --depth 2` to verify blast radius and connected call sites.
+
+### 2. Mandatory Ponytail Protocol (YAGNI & Minimal Code)
+- Implement the absolute minimum code required to fulfill the prompt (YAGNI).
+- Exclude speculative abstractions, wrapper types, unnecessary interfaces, and heavy dependencies.
+- Prioritize concise, idiomatic, single-purpose implementations over boilerplate architectures.
+
+

@@ -3,6 +3,7 @@ package com.stripedlens.calcloner.ui.components
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +56,32 @@ fun AppBottomNavigationBar(
                 selectedIconColor = TitaniumMint.Mint400,
                 selectedTextColor = TitaniumMint.Mint400,
                 indicatorColor = TitaniumMint.Mint500.copy(alpha = 0.2f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+
+        NavigationBarItem(
+            selected = currentTab == AppTab.ONE_TIME,
+            onClick = { onTabSelected(AppTab.ONE_TIME) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.FlashOn,
+                    contentDescription = "One-Time Operations"
+                )
+            },
+            label = {
+                Text(
+                    text = "One-Time",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = if (currentTab == AppTab.ONE_TIME) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 12.sp
+                )
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = TitaniumMint.Amber400,
+                selectedTextColor = TitaniumMint.Amber400,
+                indicatorColor = TitaniumMint.Amber500.copy(alpha = 0.2f),
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )

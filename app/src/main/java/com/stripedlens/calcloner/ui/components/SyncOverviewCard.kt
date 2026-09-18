@@ -82,12 +82,14 @@ fun SyncOverviewCard(
         prevSyncingAll = isSyncingAll
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 7.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ScreenHeaderSurface(
+        modifier = modifier,
+        contentPadding = 12.dp
     ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -186,4 +188,5 @@ fun SyncOverviewCard(
             }
         }
     }
+}
 }

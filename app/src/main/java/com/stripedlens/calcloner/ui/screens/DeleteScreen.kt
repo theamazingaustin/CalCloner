@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.ui.components.CalendarDropdown
+import com.stripedlens.calcloner.ui.components.ScreenHeaderBanner
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.viewmodel.DeleteOperationType
 import com.stripedlens.calcloner.viewmodel.MainUiState
@@ -75,67 +76,25 @@ fun DeleteScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ── Header Card ──────────────────────────────────────────────────────────
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        // ── Full-Width Screen Header ──────────────────────────────────────────────
+        ScreenHeaderBanner(
+            icon = Icons.Default.DeleteSweep,
+            title = "Delete Calendar Events",
+            subtitle = "CALENDAR MAINTENANCE",
+            description = "Select a calendar and an operation type. To prevent accidental data loss, deletions require typing the confirmation phrase before the action is unlocked.",
+            iconTint = TitaniumMint.Mint400,
+            subtitleColor = TitaniumMint.Mint400
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = TitaniumMint.Orange500.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, TitaniumMint.Orange500.copy(alpha = 0.3f)),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = null,
-                                tint = TitaniumMint.Orange400,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = "Delete Calendar Events",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "CALENDAR MAINTENANCE",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TitaniumMint.Orange400,
-                            letterSpacing = 0.8.sp
-                        )
-                    }
-                }
-                Text(
-                    text = "Select a calendar and an operation type. To prevent accidental data loss, deletions require typing the confirmation phrase before the action is unlocked.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp
-                )
-            }
-        }
 
         // ── Step 1: Select Calendar ──────────────────────────────────────────────
         Surface(
@@ -856,6 +815,9 @@ fun DeleteScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
 }

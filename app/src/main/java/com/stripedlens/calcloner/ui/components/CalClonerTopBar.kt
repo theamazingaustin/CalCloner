@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.BrightnessHigh
@@ -38,6 +39,7 @@ fun CalClonerTopBar(
     onExportConfig: () -> Unit,
     onImportConfig: () -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -62,18 +64,31 @@ fun CalClonerTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = TitaniumMint.Mint500,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+                    if (onNavigateBack != null) {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.size(34.dp)
+                        ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_calcloner),
-                                contentDescription = "CalCloner Logo",
-                                tint = Color(0xFF003824),
-                                modifier = Modifier.size(24.dp)
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = TitaniumMint.Mint500,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_calcloner),
+                                    contentDescription = "CalCloner Logo",
+                                    tint = Color(0xFF003824),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                     Column {

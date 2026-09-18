@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.stripedlens.calcloner.ui.components.ScreenHeaderBanner
 import com.stripedlens.calcloner.ui.theme.Palette
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.viewmodel.MainUiState
@@ -25,6 +26,7 @@ import com.stripedlens.calcloner.viewmodel.MainUiState
  * Dedicated screen for ad-hoc, one-time calendar operations.
  *
  * Hosts tools for one-off actions that do not require ongoing background sync:
+ * - Delete Calendar Events (purge cloned, clear, or wipe)
  * - One-time event cloning / copying between calendars
  * - Filtered batch deletion (by regex, keyword, date range, or status)
  * - ICS file import & export
@@ -35,6 +37,7 @@ import com.stripedlens.calcloner.viewmodel.MainUiState
 @Composable
 fun OneTimeOperationsScreen(
     uiState: MainUiState,
+    onOpenDeleteScreen: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -42,136 +45,129 @@ fun OneTimeOperationsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ── Header Card ──────────────────────────────────────────────────────────
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        // ── Full-Width Screen Header ──────────────────────────────────────────────
+        ScreenHeaderBanner(
+            icon = Icons.Default.FlashOn,
+            title = "One-Time Operations",
+            subtitle = "AD-HOC TOOLS & UTILITIES",
+            description = "Perform single, immediate actions without configuring recurring background synchronization pairs. Copy events, run targeted batch deletions, export/import .ics files, or clean duplicates.",
+            iconTint = TitaniumMint.Mint400,
+            subtitleColor = TitaniumMint.Mint400
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.3f)),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.FlashOn,
-                                contentDescription = null,
-                                tint = TitaniumMint.Amber400,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = "One-Time Operations",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "AD-HOC TOOLS & UTILITIES",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TitaniumMint.Amber400,
-                            letterSpacing = 0.8.sp
-                        )
-                    }
-                }
-                Text(
-                    text = "Perform single, immediate actions without configuring recurring background synchronization pairs. Copy events, run targeted batch deletions, export/import .ics files, or clean duplicates.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp
+            // ── Functioning Features (Listed First) ───────────────────────────────
+
+            OneTimeFeatureCard(
+                title = "Delete Calendar Events",
+                badge = "AVAILABLE",
+                badgeColor = TitaniumMint.Mint400,
+                badgeBg = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Mint500.copy(alpha = 0.35f),
+                description = "Purge cloned sync events, clear calendar contents, or wipe all events with double-confirmation safety phrases.",
+                icon = Icons.Default.DeleteSweep,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Purge cloned events created by CalCloner without affecting originals",
+                    "Clear all events or wipe calendar with typed phrase verification",
+                    "Purge orphaned tombstone records to optimize device calendar storage"
+                ),
+                actionButtonText = "Open Deletion Tool",
+                onActionClick = onOpenDeleteScreen
+            )
+
+            // ── Coming Soon Features ──────────────────────────────────────────────
+
+            OneTimeFeatureCard(
+                title = "One-Time Event Copy & Move",
+                badge = "COMING SOON",
+                badgeColor = TitaniumMint.Amber400,
+                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
+                description = "Select a source and target calendar, choose a date window or pick specific events, and copy or move them immediately.",
+                icon = Icons.Default.ContentCopy,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Copy single event or entire date range across any calendars",
+                    "Move (cut & paste) with automatic source event deletion",
+                    "Side-by-side match preview before executing"
                 )
-            }
+            )
+
+            OneTimeFeatureCard(
+                title = "Filtered Event Deletion",
+                badge = "COMING SOON",
+                badgeColor = TitaniumMint.Amber400,
+                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
+                description = "Delete specific events from a calendar matching title regex, keywords, RSVP response, or time frames without wiping the entire calendar.",
+                icon = Icons.Default.FilterListOff,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Regex & substring keyword matching across title and description",
+                    "Filter by RSVP status (e.g. purge only declined invitations)",
+                    "Safe dry-run preview showing exactly how many events match"
+                )
+            )
+
+            OneTimeFeatureCard(
+                title = "ICS File Import & Export",
+                badge = "COMING SOON",
+                badgeColor = TitaniumMint.Amber400,
+                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
+                description = "Export any calendar to a standard .ics iCalendar file for backup or cross-app sharing, or import external .ics calendar files directly.",
+                icon = Icons.Default.ImportExport,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Export full calendar or filtered date ranges to .ics",
+                    "Import .ics event files into any writable Android calendar",
+                    "Conflict detection and duplicate prevention on import"
+                )
+            )
+
+            OneTimeFeatureCard(
+                title = "Calendar Event Deduplication",
+                badge = "COMING SOON",
+                badgeColor = TitaniumMint.Amber400,
+                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
+                description = "Scan any calendar for duplicate entries created by multi-device sync collisions or third-party calendar sync engines.",
+                icon = Icons.Default.FindReplace,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Identifies identical title, start/end time, and recurrence clones",
+                    "Interactive review before pruning redundant copies",
+                    "Preserves primary event and original provider IDs"
+                )
+            )
+
+            OneTimeFeatureCard(
+                title = "Calendar Migration Wizard",
+                badge = "COMING SOON",
+                badgeColor = TitaniumMint.Amber400,
+                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
+                description = "Full calendar transfer wizard to migrate all past and future events when switching to a new Google, Outlook, or CalDAV account.",
+                icon = Icons.Default.MoveDown,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Batch event transfer with progress bar and cancel safeguard",
+                    "Remaps reminders, recurrences, and exceptions automatically",
+                    "Verification report comparing source vs destination counts"
+                )
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
-
-        // ── Operation Cards ──────────────────────────────────────────────────────
-
-        OneTimeFeatureCard(
-            title = "One-Time Event Copy & Move",
-            badge = "COMING SOON",
-            description = "Select a source and target calendar, choose a date window or pick specific events, and copy or move them immediately.",
-            icon = Icons.Default.ContentCopy,
-            accentColor = TitaniumMint.Mint400,
-            features = listOf(
-                "Copy single event or entire date range across any calendars",
-                "Move (cut & paste) with automatic source event deletion",
-                "Side-by-side match preview before executing"
-            )
-        )
-
-        OneTimeFeatureCard(
-            title = "Filtered Event Deletion",
-            badge = "COMING SOON",
-            description = "Delete specific events from a calendar matching title regex, keywords, RSVP response, or time frames without wiping the entire calendar.",
-            icon = Icons.Default.FilterListOff,
-            accentColor = TitaniumMint.Orange400,
-            features = listOf(
-                "Regex & substring keyword matching across title and description",
-                "Filter by RSVP status (e.g. purge only declined invitations)",
-                "Safe dry-run preview showing exactly how many events match"
-            )
-        )
-
-        OneTimeFeatureCard(
-            title = "ICS File Import & Export",
-            badge = "COMING SOON",
-            description = "Export any calendar to a standard .ics iCalendar file for backup or cross-app sharing, or import external .ics calendar files directly.",
-            icon = Icons.Default.ImportExport,
-            accentColor = TitaniumMint.Mint400,
-            features = listOf(
-                "Export full calendar or filtered date ranges to .ics",
-                "Import .ics event files into any writable Android calendar",
-                "Conflict detection and duplicate prevention on import"
-            )
-        )
-
-        OneTimeFeatureCard(
-            title = "Calendar Event Deduplication",
-            badge = "COMING SOON",
-            description = "Scan any calendar for duplicate entries created by multi-device sync collisions or third-party calendar sync engines.",
-            icon = Icons.Default.FindReplace,
-            accentColor = TitaniumMint.Amber400,
-            features = listOf(
-                "Identifies identical title, start/end time, and recurrence clones",
-                "Interactive review before pruning redundant copies",
-                "Preserves primary event and original provider IDs"
-            )
-        )
-
-        OneTimeFeatureCard(
-            title = "Calendar Migration Wizard",
-            badge = "COMING SOON",
-            description = "Full calendar transfer wizard to migrate all past and future events when switching to a new Google, Outlook, or CalDAV account.",
-            icon = Icons.Default.MoveDown,
-            accentColor = Palette.Zinc400,
-            features = listOf(
-                "Batch event transfer with progress bar and cancel safeguard",
-                "Remaps reminders, recurrences, and exceptions automatically",
-                "Verification report comparing source vs destination counts"
-            )
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -179,10 +175,15 @@ fun OneTimeOperationsScreen(
 private fun OneTimeFeatureCard(
     title: String,
     badge: String,
+    badgeColor: Color,
+    badgeBg: Color,
+    badgeBorder: Color,
     description: String,
     icon: ImageVector,
-    accentColor: Color,
+    iconColor: Color = TitaniumMint.Mint400,
     features: List<String>,
+    actionButtonText: String? = null,
+    onActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -210,7 +211,7 @@ private fun OneTimeFeatureCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = accentColor,
+                        tint = iconColor,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
@@ -223,15 +224,15 @@ private fun OneTimeFeatureCard(
 
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, TitaniumMint.Amber500.copy(alpha = 0.35f))
+                    color = badgeBg,
+                    border = BorderStroke(1.dp, badgeBorder)
                 ) {
                     Text(
                         text = badge,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 9.sp,
-                        color = TitaniumMint.Amber400,
+                        color = badgeColor,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
@@ -254,7 +255,7 @@ private fun OneTimeFeatureCard(
                     ) {
                         Text(
                             text = "•",
-                            color = accentColor,
+                            color = iconColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
@@ -265,6 +266,33 @@ private fun OneTimeFeatureCard(
                             fontSize = 11.sp
                         )
                     }
+                }
+            }
+
+            if (actionButtonText != null && onActionClick != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                FilledTonalButton(
+                    onClick = onActionClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                        contentColor = TitaniumMint.Mint400
+                    ),
+                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.35f))
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = actionButtonText,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
                 }
             }
         }

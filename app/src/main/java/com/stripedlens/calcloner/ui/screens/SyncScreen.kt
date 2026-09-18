@@ -62,25 +62,25 @@ fun SyncScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Full-Width Header Surface (scrolls away under TopAppBar)
+        SyncOverviewCard(
+            syncPairs = uiState.syncPairs,
+            isSyncingAll = uiState.isSyncingAll,
+            isOperating = uiState.isOperating,
+            spinAngle = spinAngle,
+            onToggleAll = onToggleAll,
+            onSyncAll = onSyncAll
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Overview Sync Controls Card
-            SyncOverviewCard(
-                syncPairs = uiState.syncPairs,
-                isSyncingAll = uiState.isSyncingAll,
-                isOperating = uiState.isOperating,
-                spinAngle = spinAngle,
-                onToggleAll = onToggleAll,
-                onSyncAll = onSyncAll
-            )
 
             // Universal Background Battery Guidance Banner
             BackgroundBatteryProtectionBanner(

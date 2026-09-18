@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -176,11 +177,23 @@ fun AddEditSyncPairSheet(
         confirmValueChange = { false }
     )
 
+    val sheetEntranceAnim = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        sheetEntranceAnim.animateTo(
+            targetValue = 0f,
+            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+        )
+    }
+
     fun attemptDismiss() {
         if (isDirty) {
             showDiscardDialog = true
         } else {
             scope.launch {
+                sheetEntranceAnim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                )
                 sheetState.hide()
                 onDismiss()
             }
@@ -476,6 +489,10 @@ fun AddEditSyncPairSheet(
             onConfirmDiscard = {
                 showDiscardDialog = false
                 scope.launch {
+                    sheetEntranceAnim.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    )
                     sheetState.hide()
                     onDismiss()
                 }
@@ -504,7 +521,14 @@ fun AddEditSyncPairSheet(
         containerColor = MaterialTheme.colorScheme.background,
         dragHandle = null
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationY = sheetEntranceAnim.value * 280.dp.toPx()
+                    alpha = 1f - (sheetEntranceAnim.value * 0.4f)
+                }
+        ) {
             // Sticky Header
             Surface(
                 color = headerBgColor,
@@ -840,6 +864,10 @@ fun AddEditSyncPairSheet(
                                                     dampingRatio = Spring.DampingRatioMediumBouncy,
                                                     stiffness = Spring.StiffnessHigh
                                                 )
+                                            )
+                                            sheetEntranceAnim.animateTo(
+                                                targetValue = 1f,
+                                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                                             )
                                             sheetState.hide()
                                             onSavePair(buildUpdatedPair())

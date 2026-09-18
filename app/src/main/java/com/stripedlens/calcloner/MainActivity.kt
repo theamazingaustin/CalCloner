@@ -10,6 +10,7 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import com.stripedlens.calcloner.util.CalendarContentObserver
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -305,6 +306,10 @@ fun CalendarSyncApp(
     // Scaffold UI
     // ─────────────────────────────────────────────────────────────────────────
 
+    BackHandler(enabled = uiState.selectedTab == AppTab.DELETE) {
+        viewModel.selectTab(AppTab.ONE_TIME)
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars,
         topBar = {
@@ -314,7 +319,10 @@ fun CalendarSyncApp(
                 onCycleTheme = onCycleTheme,
                 onExportConfig = { viewModel.exportConfiguration(context) },
                 onImportConfig = { importConfigLauncher.launch("application/json") },
-                onOpenBatterySettings = { openBatterySettings() }
+                onOpenBatterySettings = { openBatterySettings() },
+                onNavigateBack = if (uiState.selectedTab == AppTab.DELETE) {
+                    { viewModel.selectTab(AppTab.ONE_TIME) }
+                } else null
             )
         },
         bottomBar = {
@@ -389,7 +397,8 @@ fun CalendarSyncApp(
                 }
                 AppTab.ONE_TIME -> {
                     OneTimeOperationsScreen(
-                        uiState = uiState
+                        uiState = uiState,
+                        onOpenDeleteScreen = { viewModel.selectTab(AppTab.DELETE) }
                     )
                 }
                 AppTab.DELETE -> {

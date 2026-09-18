@@ -173,29 +173,42 @@ fun CalendarSelectionCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val borderColor = if (isLocked) {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    } else if (isPaused) {
-        accentColor.copy(alpha = 0.55f)
+    val baseBorderColor = if (isLocked) {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+
+    val activeBorderColor = if (isPaused) accentColor.copy(alpha = 0.55f) else accentColor
+
+    val borderColor = if (isPaused) {
+        accentColor.copy(alpha = 0.45f)
     } else {
         androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.outlineVariant,
-            accentColor,
+            baseBorderColor,
+            activeBorderColor,
             pulseAmount
         )
     }
-    val borderWidth = (1f + (if (!isLocked && !isPaused) 1.2f * pulseAmount else if (!isLocked && isPaused) 0.3f else 0f)).dp
-    val glowBackground = if (!isLocked) {
-        if (isPaused) accentSecondary.copy(alpha = 0.04f) else accentSecondary.copy(alpha = 0.07f * pulseAmount)
-    } else Color.Transparent
+
+    val borderWidth = (1f + (if (!isPaused) 1.5f * pulseAmount else 0f)).dp
+
+    // Prominent subtle surface tint glow when pulse passes through this card
+    val surfaceColor = if (!isPaused && pulseAmount > 0.01f) {
+        androidx.compose.ui.graphics.lerp(
+            MaterialTheme.colorScheme.surface,
+            accentSecondary.copy(alpha = 0.12f),
+            pulseAmount
+        )
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = surfaceColor,
         border = BorderStroke(borderWidth, borderColor),
-        modifier = modifier
-            .fillMaxWidth()
-            .background(glowBackground, RoundedCornerShape(12.dp))
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier

@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Optional: for sending local sync notifications if desired -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Network access for in-app GitHub update checking & APK download -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Package installation permission for updating app from GitHub releases -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="true"

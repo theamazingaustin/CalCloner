@@ -1,3 +1,5 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,12 +9,22 @@ android {
     namespace = "com.stripedlens.calcloner"
     compileSdk = 34
 
+    val gitTag = System.getenv("GITHUB_REF_NAME") ?: runCatching {
+        val stdout = ByteArrayOutputStream()
+        project.exec {
+            commandLine("git", "describe", "--tags", "--abbrev=0")
+            standardOutput = stdout
+        }
+        stdout.toString().trim()
+    }.getOrDefault("v2.2-9.18-4")
+
     defaultConfig {
         applicationId = "com.stripedlens.calcloner"
         minSdk = 26
         targetSdk = 34
         versionCode = 22
         versionName = "2.2"
+        buildConfigField("String", "BUILD_TAG", "\"$gitTag\"")
 
         vectorDrawables {
             useSupportLibrary = true

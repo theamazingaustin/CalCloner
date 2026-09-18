@@ -316,6 +316,10 @@ fun CalendarSyncApp(
             CalClonerTopBar(
                 themeMode = themeMode,
                 isIgnoringBatteryOptimizations = uiState.isIgnoringBatteryOptimizations,
+                availableUpdate = uiState.availableUpdate,
+                isDownloadingUpdate = uiState.isDownloadingUpdate,
+                updateDownloadProgress = uiState.updateDownloadProgress,
+                onTriggerUpdate = { viewModel.startAppUpdate(context) },
                 onCycleTheme = onCycleTheme,
                 onExportConfig = { viewModel.exportConfiguration(context) },
                 onImportConfig = { importConfigLauncher.launch("application/json") },

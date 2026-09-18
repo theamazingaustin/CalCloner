@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.stripedlens.calcloner.BuildConfig
+import com.stripedlens.calcloner.util.AppUpdateManager
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -70,6 +72,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repo.disclaimerAcceptedFlow.collect { accepted ->
                 _uiState.update { it.copy(isDisclaimerAccepted = accepted) }
+            }
+        }
+
+        // Check for app updates in background
+        viewModelScope.launch {
+            val update = AppUpdateManager.checkForUpdate(BuildConfig.BUILD_TAG)
+            if (update != null) {
+                _uiState.update { it.copy(availableUpdate = update) }
             }
         }
 
@@ -967,6 +977,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissDeletePairDialog() {
         _uiState.update { it.copy(pairToDelete = null) }
+    }
+
+    fun startAppUpdate(context: Context) {
+        val update = _uiState.value.availableUpdate ?: return
+        if (_uiState.value.isDownloadingUpdate) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloadingUpdate = true, updateDownloadProgress = 0f) }
+            val result = AppUpdateManager.downloadAndInstallApk(
+                context = context,
+                updateInfo = update,
+                onProgress = { progress ->
+                    _uiState.update { it.copy(updateDownloadProgress = progress) }
+                }
+            )
+            result.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isDownloadingUpdate = false,
+                        userToastMessage = "Update failed: ${error.message ?: "Unknown error"}"
+                    )
+                }
+            }
+            _uiState.update { it.copy(isDownloadingUpdate = false) }
+        }
     }
 
     fun clearToastMessage() {

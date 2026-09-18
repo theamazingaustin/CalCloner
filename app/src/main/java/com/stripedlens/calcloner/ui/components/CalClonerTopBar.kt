@@ -8,6 +8,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.BrightnessHigh
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +28,7 @@ import com.stripedlens.calcloner.BuildConfig
 import com.stripedlens.calcloner.R
 import com.stripedlens.calcloner.ThemeMode
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import com.stripedlens.calcloner.util.AppUpdateInfo
 
 /**
  * Top application branding and utility bar for CalCloner.
@@ -35,6 +38,10 @@ import com.stripedlens.calcloner.ui.theme.TitaniumMint
 fun CalClonerTopBar(
     themeMode: ThemeMode,
     isIgnoringBatteryOptimizations: Boolean,
+    availableUpdate: AppUpdateInfo? = null,
+    isDownloadingUpdate: Boolean = false,
+    updateDownloadProgress: Float = 0f,
+    onTriggerUpdate: () -> Unit = {},
     onCycleTheme: () -> Unit,
     onExportConfig: () -> Unit,
     onImportConfig: () -> Unit,
@@ -107,7 +114,7 @@ fun CalClonerTopBar(
                     }
                 }
 
-                // Theme Switcher & Overflow Menu
+                // Theme Switcher, Update Indicator & Overflow Menu
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -125,8 +132,34 @@ fun CalClonerTopBar(
                         )
                     }
 
+                    if (availableUpdate != null) {
+                        IconButton(
+                            onClick = onTriggerUpdate,
+                            enabled = !isDownloadingUpdate
+                        ) {
+                            if (isDownloadingUpdate) {
+                                CircularProgressIndicator(
+                                    progress = updateDownloadProgress,
+                                    modifier = Modifier.size(20.dp),
+                                    color = TitaniumMint.Mint400,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdate,
+                                    contentDescription = "Update available (${availableUpdate.tagName})",
+                                    tint = TitaniumMint.Mint400
+                                )
+                            }
+                        }
+                    }
+
                     TopAppBarOverflowMenu(
                         isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
+                        availableUpdate = availableUpdate,
+                        isDownloadingUpdate = isDownloadingUpdate,
+                        updateDownloadProgress = updateDownloadProgress,
+                        onTriggerUpdate = onTriggerUpdate,
                         onExportConfig = onExportConfig,
                         onImportConfig = onImportConfig,
                         onOpenBatterySettings = onOpenBatterySettings

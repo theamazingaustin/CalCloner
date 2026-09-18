@@ -57,6 +57,11 @@ data class MainUiState(
     val pairToDelete: SyncPair? = null,
     val importPreview: ImportPreviewState? = null,
 
+    // In-App GitHub Update State
+    val availableUpdate: com.stripedlens.calcloner.util.AppUpdateInfo? = null,
+    val isDownloadingUpdate: Boolean = false,
+    val updateDownloadProgress: Float = 0f,
+
     // One-shot User Feedback Toasts/Messages
     val userToastMessage: String? = null
 )

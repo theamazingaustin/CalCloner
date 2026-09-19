@@ -10,8 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,8 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterAlt
@@ -37,16 +36,17 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,12 +71,8 @@ import com.stripedlens.calcloner.ui.theme.TitaniumMint
  * Designed for reusability across Sync Pair Settings and One-Time Operations screens.
  */
 data class EventFilterUiState(
+    val isEnabled: Boolean = false,
     val isExpanded: Boolean = false,
-    val matchAllLogic: Boolean = true, // true = ALL (AND), false = ANY (OR)
-    // Presets
-    val presetWorkHours: Boolean = false,
-    val presetAcceptedOnly: Boolean = false,
-    val presetBusyOnly: Boolean = false,
     // Availability
     val allowBusy: Boolean = true,
     val allowFree: Boolean = true,
@@ -85,13 +82,58 @@ data class EventFilterUiState(
     val rsvpTentative: Boolean = false,
     val rsvpDeclined: Boolean = false,
     // Schedule
-    val timeWindow: String = "All Day / Anytime",
-    val activeDays: Set<Int> = setOf(1, 2, 3, 4, 5), // 1=Mon .. 7=Sun
-    // Keywords
-    val titleQuery: String = "",
-    val descriptionQuery: String = "",
-    val isCaseSensitive: Boolean = false
+    val enableTimeFilter: Boolean = false,
+    val fromHour: Int = 9,
+    val fromMinute: Int = 0,
+    val toHour: Int = 17,
+    val toMinute: Int = 0,
+    val activeDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // 1=Mon .. 7=Sun
+    // Text Filtering (Words/Phrases separated by comma)
+    val titleContains: String = "",
+    val titleDoesNotContain: String = "",
+    val descriptionContains: String = "",
+    val descriptionDoesNotContain: String = ""
 ) {
+    /**
+     * Checks for invalid or incomplete logic and returns a human-readable error,
+     * or null if the rule logic is sound.
+     */
+    val validationError: String?
+        get() {
+            if (!allowBusy && !allowFree && !allowTentative) {
+                return "At least one availability option (Busy, Free, or Tentative) must be selected."
+            }
+            if (!rsvpAccepted && !rsvpTentative && !rsvpDeclined) {
+                return "At least one RSVP status (Accepted, Tentative, or Declined) must be selected."
+            }
+            if (activeDays.isEmpty()) {
+                return "At least one active day of the week must be selected."
+            }
+            if (enableTimeFilter) {
+                val fromTotalMins = fromHour * 60 + fromMinute
+                val toTotalMins = toHour * 60 + toMinute
+                if (fromTotalMins >= toTotalMins) {
+                    return "From time must be earlier than To time."
+                }
+            }
+            // Check for direct keyword conflicts
+            val titleInclusions = titleContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            val titleExclusions = titleDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            val conflictingTitle = titleInclusions.firstOrNull { it in titleExclusions }
+            if (conflictingTitle != null) {
+                return "Title cannot simultaneously contain and exclude '$conflictingTitle'."
+            }
+
+            val descInclusions = descriptionContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            val descExclusions = descriptionDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            val conflictingDesc = descInclusions.firstOrNull { it in descExclusions }
+            if (conflictingDesc != null) {
+                return "Description cannot simultaneously contain and exclude '$conflictingDesc'."
+            }
+
+            return null
+        }
+
     /**
      * Dynamically calculates how many active filter rules are currently configured.
      */
@@ -100,9 +142,12 @@ data class EventFilterUiState(
             var count = 0
             if (!allowFree || !allowBusy || allowTentative) count++
             if (!rsvpAccepted || rsvpTentative || rsvpDeclined) count++
-            if (timeWindow != "All Day / Anytime" || activeDays.size < 7) count++
-            if (titleQuery.isNotBlank()) count++
-            if (descriptionQuery.isNotBlank()) count++
+            if (enableTimeFilter) count++
+            if (activeDays.size < 7) count++
+            if (titleContains.isNotBlank()) count++
+            if (titleDoesNotContain.isNotBlank()) count++
+            if (descriptionContains.isNotBlank()) count++
+            if (descriptionDoesNotContain.isNotBlank()) count++
             return count
         }
 }
@@ -112,60 +157,72 @@ data class EventFilterUiState(
  */
 private data class MockSampleEvent(
     val title: String,
+    val description: String,
+    val startHour: Int,
+    val startMinute: Int,
     val timeSlot: String,
     val isBusy: Boolean,
     val rsvpStatus: String, // "Accepted", "Tentative", "Declined"
-    val isWeekend: Boolean,
-    val isWorkHours: Boolean,
-    val hasPrivateTag: Boolean
+    val dayOfWeek: Int // 1=Mon .. 7=Sun
 )
 
 /**
  * Reusable, industry-leading condition and filter rule builder component.
  * Features:
- * - 1-tap Quick Preset Chips (Work Hours, Accepted Only, Busy Only)
- * - Plain-language Match Logic switcher (Match ALL vs Match ANY)
- * - Modular criteria cards (Availability/RSVP, Time/Days, Keywords/Regex)
- * - Dynamic Live Mock Preview counter & interactive sample inspector dialog
+ * - Master Enable/Disable Switch with strict validation barrier (blocks enabling if errored)
+ * - User-selectable From/To times with 'From cannot be after To' validation
+ * - 4 explicit text filters (Title/Description Contains & Doesn't Contain, comma-separated)
+ * - Contrast-optimized day-of-week bubble toggles
+ * - Live mock preview counter & interactive sample inspector dialog
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EventConditionFilterCard(
     modifier: Modifier = Modifier,
     title: String = "Sync Conditions & Filters",
-    subtitle: String = "Filter events by availability, RSVP, schedule windows, and keywords.",
+    subtitle: String = "Filter events by availability, RSVP, schedule windows, and text.",
     initialState: EventFilterUiState = remember { EventFilterUiState() },
     onStateChange: (EventFilterUiState) -> Unit = {}
 ) {
     var state by remember { mutableStateOf(initialState) }
     var showPreviewModal by remember { mutableStateOf(false) }
-    var timeWindowMenuExpanded by remember { mutableStateOf(false) }
+    var validationErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    val timeWindowOptions = listOf(
-        "All Day / Anytime",
-        "Working Hours (9:00 AM – 5:00 PM)",
-        "Morning (6:00 AM – 12:00 PM)",
-        "Afternoon / Evening (12:00 PM – 9:00 PM)",
-        "Custom Hours (9:00 AM – 5:00 PM)"
-    )
+    // Dialog state for custom time selection
+    var showTimePickerDialog by remember { mutableStateOf(false) }
+    var isPickingFromTime by remember { mutableStateOf(true) }
 
-    // Helper to update state and invoke callback
     fun updateState(reducer: (EventFilterUiState) -> EventFilterUiState) {
         state = reducer(state)
+        // Clear error message if user fixes the condition
+        if (validationErrorMessage != null && state.validationError == null) {
+            validationErrorMessage = null
+        }
         onStateChange(state)
+    }
+
+    // Helper to format hour & minute to 12h AM/PM
+    fun formatTime(hour: Int, minute: Int): String {
+        val h = when {
+            hour == 0 -> 12
+            hour > 12 -> hour - 12
+            else -> hour
+        }
+        val amPm = if (hour < 12) "AM" else "PM"
+        val m = minute.toString().padStart(2, '0')
+        return "$h:$m $amPm"
     }
 
     // Realistic mock sample events for interactive UI testing
     val mockEvents = remember {
         listOf(
-            MockSampleEvent("Weekly Team Standup", "Mon 9:30 AM", isBusy = true, rsvpStatus = "Accepted", isWeekend = false, isWorkHours = true, hasPrivateTag = false),
-            MockSampleEvent("Dentist Appointment [Private]", "Tue 2:00 PM", isBusy = true, rsvpStatus = "Declined", isWeekend = false, isWorkHours = true, hasPrivateTag = true),
-            MockSampleEvent("Family BBQ & Weekend Fun", "Sat 1:00 PM", isBusy = false, rsvpStatus = "Accepted", isWeekend = true, isWorkHours = false, hasPrivateTag = false),
-            MockSampleEvent("Product Roadmap Review", "Wed 11:00 AM", isBusy = true, rsvpStatus = "Accepted", isWeekend = false, isWorkHours = true, hasPrivateTag = false),
-            MockSampleEvent("Focus Block / Free Reading", "Thu 3:00 PM", isBusy = false, rsvpStatus = "Accepted", isWeekend = false, isWorkHours = true, hasPrivateTag = false),
-            MockSampleEvent("Late Evening APAC Sync", "Tue 9:30 PM", isBusy = true, rsvpStatus = "Accepted", isWeekend = false, isWorkHours = false, hasPrivateTag = false),
-            MockSampleEvent("Optional Coffee Chat", "Fri 4:30 PM", isBusy = false, rsvpStatus = "Tentative", isWeekend = false, isWorkHours = true, hasPrivateTag = false),
-            MockSampleEvent("Strategic Client Pitch", "Mon 1:30 PM", isBusy = true, rsvpStatus = "Accepted", isWeekend = false, isWorkHours = true, hasPrivateTag = false)
+            MockSampleEvent("Weekly Team Standup", "Discuss team priorities and blockers via Meet", 9, 30, "Mon 9:30 AM", isBusy = true, rsvpStatus = "Accepted", dayOfWeek = 1),
+            MockSampleEvent("Dentist Appointment", "Routine dental checkup [Personal]", 14, 0, "Tue 2:00 PM", isBusy = true, rsvpStatus = "Declined", dayOfWeek = 2),
+            MockSampleEvent("Family BBQ & Weekend Gathering", "Lunch at the park with friends", 13, 0, "Sat 1:00 PM", isBusy = false, rsvpStatus = "Accepted", dayOfWeek = 6),
+            MockSampleEvent("Product Roadmap & Strategy", "Review quarterly deliverables and metrics", 11, 0, "Wed 11:00 AM", isBusy = true, rsvpStatus = "Accepted", dayOfWeek = 3),
+            MockSampleEvent("Focus Block / Free Reading", "Catching up on engineering docs", 15, 0, "Thu 3:00 PM", isBusy = false, rsvpStatus = "Accepted", dayOfWeek = 4),
+            MockSampleEvent("Late Evening APAC Sync", "Coordination call with Tokyo team", 21, 30, "Tue 9:30 PM", isBusy = true, rsvpStatus = "Accepted", dayOfWeek = 2),
+            MockSampleEvent("Coffee Chat with Alex", "Informal 1-on-1 sync", 16, 30, "Fri 4:30 PM", isBusy = false, rsvpStatus = "Tentative", dayOfWeek = 5),
+            MockSampleEvent("Confidential Client Pitch", "NDA protected business review", 13, 30, "Mon 1:30 PM", isBusy = true, rsvpStatus = "Accepted", dayOfWeek = 1)
         )
     }
 
@@ -183,15 +240,44 @@ fun EventConditionFilterCard(
             if (event.rsvpStatus == "Tentative" && !state.rsvpTentative) reasons.add("RSVP (Tentative unselected)")
             if (event.rsvpStatus == "Declined" && !state.rsvpDeclined) reasons.add("RSVP (Declined)")
 
-            // Check Schedule & Days
-            if (state.timeWindow.contains("Working Hours") && !event.isWorkHours) reasons.add("Outside Working Hours")
-            if (state.presetWorkHours && (event.isWeekend || !event.isWorkHours)) reasons.add("Outside Work Hours Preset")
-            if (event.isWeekend && !state.activeDays.contains(6) && !state.activeDays.contains(7)) reasons.add("Weekend Day")
+            // Check Days
+            if (!state.activeDays.contains(event.dayOfWeek)) reasons.add("Day of week filtered out")
 
-            // Check Keyword exclusions
-            if (state.titleQuery.contains("!private", ignoreCase = true) && event.hasPrivateTag) reasons.add("Matches '!private' exclusion")
+            // Check Time Window
+            if (state.enableTimeFilter) {
+                val eventMins = event.startHour * 60 + event.startMinute
+                val fromMins = state.fromHour * 60 + state.fromMinute
+                val toMins = state.toHour * 60 + state.toMinute
+                if (eventMins < fromMins || eventMins > toMins) {
+                    reasons.add("Outside time window (${formatTime(state.fromHour, state.fromMinute)} – ${formatTime(state.toHour, state.toMinute)})")
+                }
+            }
 
-            val isMatched = if (state.activeRuleCount == 0) true else reasons.isEmpty()
+            // Check Title Contains
+            val titleInc = state.titleContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (titleInc.isNotEmpty() && titleInc.none { event.title.lowercase().contains(it) }) {
+                reasons.add("Title doesn't contain required keywords")
+            }
+
+            // Check Title Doesn't Contain
+            val titleExc = state.titleDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (titleExc.any { event.title.lowercase().contains(it) }) {
+                reasons.add("Title contains excluded keyword")
+            }
+
+            // Check Description Contains
+            val descInc = state.descriptionContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (descInc.isNotEmpty() && descInc.none { event.description.lowercase().contains(it) }) {
+                reasons.add("Description doesn't contain required keywords")
+            }
+
+            // Check Description Doesn't Contain
+            val descExc = state.descriptionDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (descExc.any { event.description.lowercase().contains(it) }) {
+                reasons.add("Description contains excluded keyword")
+            }
+
+            val isMatched = if (!state.isEnabled && state.activeRuleCount == 0) true else reasons.isEmpty()
             event to (isMatched to reasons.joinToString(", "))
         }
     }
@@ -202,7 +288,14 @@ fun EventConditionFilterCard(
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, if (state.activeRuleCount > 0) TitaniumMint.Mint500.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(
+            1.dp,
+            when {
+                validationErrorMessage != null -> MaterialTheme.colorScheme.error
+                state.isEnabled -> TitaniumMint.Mint500.copy(alpha = 0.6f)
+                else -> MaterialTheme.colorScheme.outlineVariant
+            }
+        ),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -211,7 +304,7 @@ fun EventConditionFilterCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── 1. Header Bar ──────────────────────────────────────────────
+            // ── 1. Header Bar with Master Enable Switch ─────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,14 +321,17 @@ fun EventConditionFilterCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (state.activeRuleCount > 0) TitaniumMint.Mint500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                        color = when {
+                            state.isEnabled -> TitaniumMint.Mint500.copy(alpha = 0.15f)
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.Tune,
                                 contentDescription = null,
-                                tint = if (state.activeRuleCount > 0) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (state.isEnabled) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -250,21 +346,22 @@ fun EventConditionFilterCard(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (state.activeRuleCount > 0) {
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = TitaniumMint.Mint500.copy(alpha = 0.15f),
-                                    border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.35f))
-                                ) {
-                                    Text(
-                                        text = "${state.activeRuleCount} ACTIVE",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp,
-                                        color = TitaniumMint.Mint400,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (state.isEnabled) TitaniumMint.Mint500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (state.isEnabled) TitaniumMint.Mint500.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outlineVariant
+                                )
+                            ) {
+                                Text(
+                                    text = if (state.isEnabled) "${state.activeRuleCount} ACTIVE" else "OFF",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp,
+                                    color = if (state.isEnabled) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
                             }
                         }
                         Text(
@@ -275,142 +372,120 @@ fun EventConditionFilterCard(
                         )
                     }
                 }
-                IconButton(onClick = { updateState { it.copy(isExpanded = !it.isExpanded) } }) {
-                    Icon(
-                        imageVector = if (state.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (state.isExpanded) "Collapse" else "Expand",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
 
-            // ── 2. Quick Preset Chips (Always Visible for 1-Tap Use) ───────
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "QUICK PRESETS",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.5.sp
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    FilterPresetChip(
-                        label = "Work Hours Only",
-                        icon = Icons.Default.Schedule,
-                        isSelected = state.presetWorkHours,
-                        onClick = {
-                            updateState {
-                                val next = !it.presetWorkHours
-                                it.copy(
-                                    presetWorkHours = next,
-                                    timeWindow = if (next) "Working Hours (9:00 AM – 5:00 PM)" else "All Day / Anytime",
-                                    activeDays = if (next) setOf(1, 2, 3, 4, 5) else setOf(1, 2, 3, 4, 5, 6, 7)
-                                )
+                    // Master Enable Switch with Error Guardrail
+                    Switch(
+                        checked = state.isEnabled,
+                        onCheckedChange = { targetState ->
+                            if (targetState) {
+                                // User attempting to enable: check validation
+                                val error = state.validationError
+                                if (error != null) {
+                                    validationErrorMessage = error
+                                    // Expand card so user sees what needs fixing
+                                    updateState { it.copy(isExpanded = true) }
+                                } else {
+                                    validationErrorMessage = null
+                                    updateState { it.copy(isEnabled = true) }
+                                }
+                            } else {
+                                validationErrorMessage = null
+                                updateState { it.copy(isEnabled = false) }
                             }
-                        }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TitaniumMint.CarbonOnyx,
+                            checkedTrackColor = TitaniumMint.Mint500,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     )
-                    FilterPresetChip(
-                        label = "Accepted Only",
-                        icon = Icons.Default.Check,
-                        isSelected = state.presetAcceptedOnly,
-                        onClick = {
-                            updateState {
-                                val next = !it.presetAcceptedOnly
-                                it.copy(
-                                    presetAcceptedOnly = next,
-                                    rsvpAccepted = true,
-                                    rsvpTentative = !next,
-                                    rsvpDeclined = false
-                                )
-                            }
-                        }
-                    )
-                    FilterPresetChip(
-                        label = "Busy Only",
-                        icon = Icons.Default.FilterAlt,
-                        isSelected = state.presetBusyOnly,
-                        onClick = {
-                            updateState {
-                                val next = !it.presetBusyOnly
-                                it.copy(
-                                    presetBusyOnly = next,
-                                    allowBusy = true,
-                                    allowFree = !next
-                                )
-                            }
-                        }
-                    )
+
+                    IconButton(onClick = { updateState { it.copy(isExpanded = !it.isExpanded) } }) {
+                        Icon(
+                            imageVector = if (state.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (state.isExpanded) "Collapse" else "Expand",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            // ── 3. Expandable Detailed Criteria Sections ──────────────────
+            // ── Error Alert Banner (When Enable Attempt Fails) ────────────
+            if (validationErrorMessage != null) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Cannot Enable Filter",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                text = validationErrorMessage ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── 2. Expandable Criteria Sections ───────────────────────────
             AnimatedVisibility(
                 visible = state.isExpanded,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(if (state.isEnabled) 1.0f else 0.75f),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Divider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                         thickness = 0.5.dp
                     )
 
-                    // Match Logic Switcher (Match ALL vs Match ANY)
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                    // Notice if editing while disabled
+                    if (!state.isEnabled) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "MATCH LOGIC",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { updateState { it.copy(matchAllLogic = true) } }
-                                ) {
-                                    RadioButton(
-                                        selected = state.matchAllLogic,
-                                        onClick = { updateState { it.copy(matchAllLogic = true) } },
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Match ALL (AND)", style = MaterialTheme.typography.bodySmall)
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { updateState { it.copy(matchAllLogic = false) } }
-                                ) {
-                                    RadioButton(
-                                        selected = !state.matchAllLogic,
-                                        onClick = { updateState { it.copy(matchAllLogic = false) } },
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Match ANY (OR)", style = MaterialTheme.typography.bodySmall)
-                                }
+                                Icon(Icons.Default.Info, contentDescription = null, tint = TitaniumMint.Mint400, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = "Filter is currently inactive. You can configure rules below and toggle it ON when ready.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -483,54 +558,99 @@ fun EventConditionFilterCard(
                         }
                     }
 
-                    // Section B: Active Time Window & Days of Week
+                    // Section B: Time Window & Days of Week
                     RuleSectionCard(
                         icon = Icons.Default.Schedule,
                         title = "Active Schedule Window & Days"
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            // Dropdown Window
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { timeWindowMenuExpanded = true }
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Enable Time Window Toggle
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { updateState { it.copy(enableTimeFilter = !it.enableTimeFilter) } },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Filter by Hours of the Day", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = if (state.enableTimeFilter) "Only sync events starting within this time range" else "Any time of day (All day)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Checkbox(
+                                    checked = state.enableTimeFilter,
+                                    onCheckedChange = { updateState { s -> s.copy(enableTimeFilter = it) } }
+                                )
+                            }
+
+                            // User-Selectable From & To Times
+                            if (state.enableTimeFilter) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Row(
+                                    // From Time Chip
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                            .weight(1f)
+                                            .clickable {
+                                                isPickingFromTime = true
+                                                showTimePickerDialog = true
+                                            }
                                     ) {
-                                        Text(state.timeWindow, style = MaterialTheme.typography.bodyMedium)
-                                        Icon(
-                                            imageVector = Icons.Default.ExpandMore,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Text("FROM TIME", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(Modifier.height(2.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = TitaniumMint.Mint400, modifier = Modifier.size(16.dp))
+                                                Text(formatTime(state.fromHour, state.fromMinute), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+
+                                    // To Time Chip
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                isPickingFromTime = false
+                                                showTimePickerDialog = true
+                                            }
+                                    ) {
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Text("TO TIME", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(Modifier.height(2.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = TitaniumMint.Mint400, modifier = Modifier.size(16.dp))
+                                                Text(formatTime(state.toHour, state.toMinute), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
                                 }
-                                DropdownMenu(
-                                    expanded = timeWindowMenuExpanded,
-                                    onDismissRequest = { timeWindowMenuExpanded = false }
-                                ) {
-                                    timeWindowOptions.forEach { opt ->
-                                        DropdownMenuItem(
-                                            text = { Text(opt, style = MaterialTheme.typography.bodyMedium) },
-                                            onClick = {
-                                                updateState { it.copy(timeWindow = opt) }
-                                                timeWindowMenuExpanded = false
-                                            }
-                                        )
-                                    }
+
+                                // In-flight warning if From >= To
+                                val fromMins = state.fromHour * 60 + state.fromMinute
+                                val toMins = state.toHour * 60 + state.toMinute
+                                if (fromMins >= toMins) {
+                                    Text(
+                                        text = "⚠️ From time must be earlier than To time.",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
 
-                            // Day of week bubbles (M T W T F S S)
+                            // Day of week bubbles (M T W T F S S) with enhanced contrast
                             Text(
                                 text = "ACTIVE DAYS OF WEEK",
                                 fontFamily = FontFamily.Monospace,
@@ -547,13 +667,13 @@ fun EventConditionFilterCard(
                                     val isSelected = state.activeDays.contains(dayNum)
                                     Surface(
                                         shape = CircleShape,
-                                        color = if (isSelected) TitaniumMint.Mint500 else MaterialTheme.colorScheme.surfaceVariant,
+                                        color = if (isSelected) TitaniumMint.Mint500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                                         border = BorderStroke(
                                             1.dp,
                                             if (isSelected) TitaniumMint.Mint400 else MaterialTheme.colorScheme.outlineVariant
                                         ),
                                         modifier = Modifier
-                                            .size(34.dp)
+                                            .size(36.dp)
                                             .clickable {
                                                 updateState { s ->
                                                     val newDays = s.activeDays.toMutableSet()
@@ -567,7 +687,7 @@ fun EventConditionFilterCard(
                                                 text = label,
                                                 style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isSelected) Color(0xFF003824) else MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (isSelected) Color(0xFF003824) else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -576,38 +696,57 @@ fun EventConditionFilterCard(
                         }
                     }
 
-                    // Section C: Keywords & Regex Filter
+                    // Section C: Text & Keyword Filtering (4 Explicit Text Boxes)
                     RuleSectionCard(
                         icon = Icons.Default.TextFields,
-                        title = "Keyword & Regex Matching"
+                        title = "Text & Keyword Filtering"
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = state.titleQuery,
-                                onValueChange = { updateState { s -> s.copy(titleQuery = it) } },
-                                placeholder = { Text("e.g. #work, !private, /sync|standup/i") },
-                                trailingIcon = {
-                                    if (state.titleQuery.isNotEmpty()) {
-                                        IconButton(onClick = { updateState { it.copy(titleQuery = "") } }) {
-                                            Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = TitaniumMint.Mint400,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                                ),
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Instructional Note
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                                 modifier = Modifier.fillMaxWidth()
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                QuerySyntaxTag(text = "#tag: include")
-                                QuerySyntaxTag(text = "!word: exclude")
-                                QuerySyntaxTag(text = "/pattern/: regex")
+                                Text(
+                                    text = "💡 Separate multiple words or phrases with a comma (e.g. 'standup, team meeting, sync')",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
                             }
+
+                            // 1. Title Contains
+                            KeywordInputField(
+                                label = "Title Contains",
+                                value = state.titleContains,
+                                placeholder = "e.g. Meeting, Standup, Project",
+                                onValueChange = { updateState { s -> s.copy(titleContains = it) } }
+                            )
+
+                            // 2. Title Doesn't Contain
+                            KeywordInputField(
+                                label = "Title Doesn't Contain",
+                                value = state.titleDoesNotContain,
+                                placeholder = "e.g. Private, Personal, Doctor",
+                                onValueChange = { updateState { s -> s.copy(titleDoesNotContain = it) } }
+                            )
+
+                            // 3. Description Contains
+                            KeywordInputField(
+                                label = "Description Contains",
+                                value = state.descriptionContains,
+                                placeholder = "e.g. Zoom, Google Meet, Urgent",
+                                onValueChange = { updateState { s -> s.copy(descriptionContains = it) } }
+                            )
+
+                            // 4. Description Doesn't Contain
+                            KeywordInputField(
+                                label = "Description Doesn't Contain",
+                                value = state.descriptionDoesNotContain,
+                                placeholder = "e.g. Confidential, Draft, Ignore",
+                                onValueChange = { updateState { s -> s.copy(descriptionDoesNotContain = it) } }
+                            )
                         }
                     }
 
@@ -619,8 +758,9 @@ fun EventConditionFilterCard(
                         ) {
                             TextButton(
                                 onClick = {
+                                    validationErrorMessage = null
                                     updateState {
-                                        EventFilterUiState(isExpanded = true)
+                                        EventFilterUiState(isExpanded = true, isEnabled = false)
                                     }
                                 },
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -634,7 +774,7 @@ fun EventConditionFilterCard(
                 }
             }
 
-            // ── 4. Live Mock Preview Banner ────────────────────────────────
+            // ── 3. Live Mock Preview Banner ────────────────────────────────
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = TitaniumMint.Mint500.copy(alpha = 0.08f),
@@ -670,7 +810,7 @@ fun EventConditionFilterCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (state.activeRuleCount == 0) "No active filters (All events will sync)" else "${totalCount - matchedCount} events would be filtered out. Tap to inspect.",
+                                text = if (!state.isEnabled) "Filter is OFF (All events sync). Tap to test rules." else "${totalCount - matchedCount} events would be filtered out. Tap to inspect.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -685,6 +825,167 @@ fun EventConditionFilterCard(
                 }
             }
         }
+    }
+
+    // ── 4. Time Picker Dialog (User Selectable to Any Time) ───────────────
+    if (showTimePickerDialog) {
+        val currentHour = if (isPickingFromTime) state.fromHour else state.toHour
+        val currentMinute = if (isPickingFromTime) state.fromMinute else state.toMinute
+
+        var selectedHour12 by remember { mutableStateOf(if (currentHour == 0) 12 else if (currentHour > 12) currentHour - 12 else currentHour) }
+        var selectedMinute by remember { mutableStateOf(currentMinute) }
+        var isAm by remember { mutableStateOf(currentHour < 12) }
+
+        var hourMenuExpanded by remember { mutableStateOf(false) }
+        var minuteMenuExpanded by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showTimePickerDialog = false },
+            title = {
+                Text(
+                    text = if (isPickingFromTime) "Set 'From' Time" else "Set 'To' Time",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Select any time of day:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Hour Selector Box
+                        Box {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.clickable { hourMenuExpanded = true }
+                            ) {
+                                Text(
+                                    text = selectedHour12.toString().padStart(2, '0'),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = hourMenuExpanded,
+                                onDismissRequest = { hourMenuExpanded = false }
+                            ) {
+                                (1..12).forEach { h ->
+                                    DropdownMenuItem(
+                                        text = { Text(h.toString().padStart(2, '0')) },
+                                        onClick = {
+                                            selectedHour12 = h
+                                            hourMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(":", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+
+                        // Minute Selector Box
+                        Box {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.clickable { minuteMenuExpanded = true }
+                            ) {
+                                Text(
+                                    text = selectedMinute.toString().padStart(2, '0'),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = minuteMenuExpanded,
+                                onDismissRequest = { minuteMenuExpanded = false }
+                            ) {
+                                listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55).forEach { m ->
+                                    DropdownMenuItem(
+                                        text = { Text(m.toString().padStart(2, '0')) },
+                                        onClick = {
+                                            selectedMinute = m
+                                            minuteMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // AM / PM Toggle
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isAm) TitaniumMint.Mint500 else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.clickable { isAm = true }
+                            ) {
+                                Text(
+                                    text = "AM",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isAm) Color(0xFF003824) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (!isAm) TitaniumMint.Mint500 else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.clickable { isAm = false }
+                            ) {
+                                Text(
+                                    text = "PM",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (!isAm) Color(0xFF003824) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val computed24Hour = when {
+                            isAm && selectedHour12 == 12 -> 0
+                            !isAm && selectedHour12 < 12 -> selectedHour12 + 12
+                            else -> selectedHour12
+                        }
+
+                        if (isPickingFromTime) {
+                            updateState { it.copy(fromHour = computed24Hour, fromMinute = selectedMinute) }
+                        } else {
+                            updateState { it.copy(toHour = computed24Hour, toMinute = selectedMinute) }
+                        }
+                        showTimePickerDialog = false
+                    }
+                ) {
+                    Text("Done", color = TitaniumMint.Mint400, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // ── 5. Sample Event Inspector Modal Dialog ─────────────────────────────
@@ -724,7 +1025,7 @@ fun EventConditionFilterCard(
                         ) {
                             Icon(Icons.Default.Info, contentDescription = null, tint = TitaniumMint.Mint400, modifier = Modifier.size(16.dp))
                             Text(
-                                text = "Testing against representative calendar events. Matches recalculate live as you toggle conditions.",
+                                text = "Testing against sample calendar events. Results recalculate live as you edit criteria.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -761,6 +1062,14 @@ fun EventConditionFilterCard(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    if (event.description.isNotEmpty()) {
+                                        Text(
+                                            text = "Note: ${event.description}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            maxLines = 1
+                                        )
+                                    }
                                     if (!isMatched && reason.isNotEmpty()) {
                                         Text(
                                             text = "Excluded: $reason",
@@ -800,39 +1109,38 @@ fun EventConditionFilterCard(
 // ── Sub-Components ─────────────────────────────────────────────────────────
 
 @Composable
-private fun FilterPresetChip(
+private fun KeywordInputField(
     label: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    value: String,
+    placeholder: String,
+    onValueChange: (String) -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = if (isSelected) TitaniumMint.Mint500.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(
-            1.dp,
-            if (isSelected) TitaniumMint.Mint400 else MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isSelected) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(14.dp)
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurface
-            )
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label.uppercase(),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text(placeholder, fontSize = 13.sp) },
+            trailingIcon = {
+                if (value.isNotEmpty()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                    }
+                }
+            },
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = TitaniumMint.Mint400,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -844,8 +1152,8 @@ private fun RuleSectionCard(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -883,21 +1191,5 @@ private fun FilterCheckboxRow(
             modifier = Modifier.size(20.dp)
         )
         Text(label, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun QuerySyntaxTag(text: String) {
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    ) {
-        Text(
-            text = text,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
     }
 }

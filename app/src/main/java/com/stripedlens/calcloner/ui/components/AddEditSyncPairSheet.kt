@@ -758,7 +758,7 @@ fun AddEditSyncPairSheet(
                         onDaysFutureChange = { daysFuture = it }
                     )
 
-                    // Sync Conditions & Filters Preview Card (Coming Soon)
+                    // Sync Conditions & Filters (Interactive Rule Engine UI)
                     SyncConditionsCard()
 
                     // Selective Field Sync Options Card

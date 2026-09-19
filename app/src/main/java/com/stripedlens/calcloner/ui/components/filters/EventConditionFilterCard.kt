@@ -752,6 +752,13 @@ fun EventConditionFilterCard(
                                 onValueChange = { updateState { s -> s.copy(titleDoesNotContain = it) } }
                             )
 
+                            // Subtle Divider between Title and Description Filter Fields
+                            Divider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                thickness = 0.5.dp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
                             // 3. Description Contains
                             KeywordInputField(
                                 label = "Description Contains",
@@ -797,57 +804,57 @@ fun EventConditionFilterCard(
                             }
                         }
                     }
-                }
-            }
 
-            // ── 3. Live Mock Preview Banner ────────────────────────────────
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = TitaniumMint.Mint500.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.35f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { showPreviewModal = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f)
+                    // ── 3. Live Mock Preview Banner (Only Shown When Section is Expanded) ──
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = TitaniumMint.Mint500.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, TitaniumMint.Mint500.copy(alpha = 0.35f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { showPreviewModal = true }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Visibility,
-                            contentDescription = null,
-                            tint = TitaniumMint.Mint400,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    tint = TitaniumMint.Mint400,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "Preview: $matchedCount of $totalCount sample events match",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (!state.isEnabled) "Filter is OFF (All events sync). Tap to test rules." else "${totalCount - matchedCount} events would be filtered out. Tap to inspect.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                             Text(
-                                text = "Preview: $matchedCount of $totalCount sample events match",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = if (!state.isEnabled) "Filter is OFF (All events sync). Tap to test rules." else "${totalCount - matchedCount} events would be filtered out. Tap to inspect.",
+                                text = "Inspect",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.Bold,
+                                color = TitaniumMint.Mint400
                             )
                         }
                     }
-                    Text(
-                        text = "Inspect",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = TitaniumMint.Mint400
-                    )
                 }
             }
         }
@@ -1184,32 +1191,54 @@ private fun KeywordInputField(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            // Modern M3 Segmented Pill (ANY | ALL)
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(0.5.dp, if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onMatchAllChange(!isMatchAll) }
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.clip(RoundedCornerShape(12.dp))
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    modifier = Modifier.padding(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isMatchAll) "MATCH ALL (AND)" else "MATCH ANY (OR)",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Switch match mode",
-                        tint = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
+                    // ANY Segment
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (!isMatchAll) TitaniumMint.Mint500.copy(alpha = 0.22f) else Color.Transparent,
+                        border = if (!isMatchAll) BorderStroke(0.5.dp, TitaniumMint.Mint400.copy(alpha = 0.6f)) else null,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onMatchAllChange(false) }
+                    ) {
+                        Text(
+                            text = "ANY (OR)",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.5.sp,
+                            fontWeight = if (!isMatchAll) FontWeight.Bold else FontWeight.Medium,
+                            color = if (!isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    // ALL Segment
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isMatchAll) TitaniumMint.Mint500.copy(alpha = 0.22f) else Color.Transparent,
+                        border = if (isMatchAll) BorderStroke(0.5.dp, TitaniumMint.Mint400.copy(alpha = 0.6f)) else null,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onMatchAllChange(true) }
+                    ) {
+                        Text(
+                            text = "ALL (AND)",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.5.sp,
+                            fontWeight = if (isMatchAll) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
         }

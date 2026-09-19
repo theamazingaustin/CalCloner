@@ -471,12 +471,6 @@ fun AddEditSyncPairSheet(
         label = "headerBgColor"
     )
 
-    val headerBorderColor by animateColorAsState(
-        targetValue = if (isEnabled) TitaniumMint.Mint600.copy(alpha = 0.4f) else TitaniumMint.Amber500.copy(alpha = 0.4f),
-        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-        label = "headerBorderColor"
-    )
-
     val effectiveSourcePulse = sourcePulse * pulseMultiplier
     val effectivePipeFlowProgress = pipeFlowProgress
     val effectivePipeFlowActive = pipeFlowActive && (pulseMultiplier > 0.05f)
@@ -529,10 +523,10 @@ fun AddEditSyncPairSheet(
                     alpha = 1f - (sheetEntranceAnim.value * 0.4f)
                 }
         ) {
-            // Sticky Header
+            // Sticky Header (Clean borderless edge to eliminate horizontal scroll line artifact)
             Surface(
                 color = headerBgColor,
-                border = BorderStroke(1.dp, headerBorderColor),
+                shadowElevation = 2.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .zIndex(5f)

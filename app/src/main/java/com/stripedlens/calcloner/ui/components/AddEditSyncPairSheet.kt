@@ -758,9 +758,6 @@ fun AddEditSyncPairSheet(
                         onDaysFutureChange = { daysFuture = it }
                     )
 
-                    // Sync Conditions & Filters (Interactive Rule Engine UI)
-                    SyncConditionsCard()
-
                     // Selective Field Sync Options Card
                     SyncFieldOptionsCard(
                         syncTitle = syncTitle,
@@ -799,6 +796,9 @@ fun AddEditSyncPairSheet(
                         onAttendeesPlacementChange = { attendeesPlacement = it },
                         accentColor = themeAccentColor
                     )
+
+                    // Sync Conditions & Filters (Interactive Rule Engine UI)
+                    SyncConditionsCard()
 
                     // Delete Pair Configuration Section
                     PairDeleteSection(

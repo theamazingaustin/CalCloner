@@ -337,33 +337,11 @@ fun EventConditionFilterCard(
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = if (state.isEnabled) TitaniumMint.Mint500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (state.isEnabled) TitaniumMint.Mint500.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outlineVariant
-                                )
-                            ) {
-                                Text(
-                                    text = if (state.isEnabled) "${state.activeRuleCount} ACTIVE" else "OFF",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 9.sp,
-                                    color = if (state.isEnabled) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.labelSmall,
@@ -468,25 +446,28 @@ fun EventConditionFilterCard(
                         thickness = 0.5.dp
                     )
 
-                    // Notice if editing while disabled
-                    if (!state.isEnabled) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            modifier = Modifier.fillMaxWidth()
+                    // Explanatory Rule Logic Banner
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(Icons.Default.Info, contentDescription = null, tint = TitaniumMint.Mint400, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = "Filter is currently inactive. You can configure rules below and toggle it ON when ready.",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = TitaniumMint.Mint400,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Events that match all the following criteria will be copied to the target calendar.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 

@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
@@ -90,9 +91,13 @@ data class EventFilterUiState(
     val activeDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // 1=Mon .. 7=Sun
     // Text Filtering (Words/Phrases separated by comma)
     val titleContains: String = "",
+    val titleContainsMatchAll: Boolean = false,
     val titleDoesNotContain: String = "",
+    val titleDoesNotContainMatchAll: Boolean = false,
     val descriptionContains: String = "",
-    val descriptionDoesNotContain: String = ""
+    val descriptionContainsMatchAll: Boolean = false,
+    val descriptionDoesNotContain: String = "",
+    val descriptionDoesNotContainMatchAll: Boolean = false
 ) {
     /**
      * Checks for invalid or incomplete logic and returns a human-readable error,
@@ -255,26 +260,54 @@ fun EventConditionFilterCard(
 
             // Check Title Contains
             val titleInc = state.titleContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-            if (titleInc.isNotEmpty() && titleInc.none { event.title.lowercase().contains(it) }) {
-                reasons.add("Title doesn't contain required keywords")
+            if (titleInc.isNotEmpty()) {
+                val matches = if (state.titleContainsMatchAll) {
+                    titleInc.all { event.title.lowercase().contains(it) }
+                } else {
+                    titleInc.any { event.title.lowercase().contains(it) }
+                }
+                if (!matches) {
+                    reasons.add(if (state.titleContainsMatchAll) "Title doesn't contain all required keywords" else "Title doesn't contain any required keywords")
+                }
             }
 
             // Check Title Doesn't Contain
             val titleExc = state.titleDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-            if (titleExc.any { event.title.lowercase().contains(it) }) {
-                reasons.add("Title contains excluded keyword")
+            if (titleExc.isNotEmpty()) {
+                val matchesExcluded = if (state.titleDoesNotContainMatchAll) {
+                    titleExc.all { event.title.lowercase().contains(it) }
+                } else {
+                    titleExc.any { event.title.lowercase().contains(it) }
+                }
+                if (matchesExcluded) {
+                    reasons.add(if (state.titleDoesNotContainMatchAll) "Title contains all excluded keywords" else "Title contains excluded keyword")
+                }
             }
 
             // Check Description Contains
             val descInc = state.descriptionContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-            if (descInc.isNotEmpty() && descInc.none { event.description.lowercase().contains(it) }) {
-                reasons.add("Description doesn't contain required keywords")
+            if (descInc.isNotEmpty()) {
+                val matches = if (state.descriptionContainsMatchAll) {
+                    descInc.all { event.description.lowercase().contains(it) }
+                } else {
+                    descInc.any { event.description.lowercase().contains(it) }
+                }
+                if (!matches) {
+                    reasons.add(if (state.descriptionContainsMatchAll) "Description doesn't contain all required keywords" else "Description doesn't contain any required keywords")
+                }
             }
 
             // Check Description Doesn't Contain
             val descExc = state.descriptionDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-            if (descExc.any { event.description.lowercase().contains(it) }) {
-                reasons.add("Description contains excluded keyword")
+            if (descExc.isNotEmpty()) {
+                val matchesExcluded = if (state.descriptionDoesNotContainMatchAll) {
+                    descExc.all { event.description.lowercase().contains(it) }
+                } else {
+                    descExc.any { event.description.lowercase().contains(it) }
+                }
+                if (matchesExcluded) {
+                    reasons.add(if (state.descriptionDoesNotContainMatchAll) "Description contains all excluded keywords" else "Description contains excluded keyword")
+                }
             }
 
             val isMatched = if (!state.isEnabled && state.activeRuleCount == 0) true else reasons.isEmpty()
@@ -702,6 +735,9 @@ fun EventConditionFilterCard(
                                 label = "Title Contains",
                                 value = state.titleContains,
                                 placeholder = "e.g. Meeting, Standup, Project",
+                                isMatchAll = state.titleContainsMatchAll,
+                                isExclude = false,
+                                onMatchAllChange = { mode -> updateState { s -> s.copy(titleContainsMatchAll = mode) } },
                                 onValueChange = { updateState { s -> s.copy(titleContains = it) } }
                             )
 
@@ -710,6 +746,9 @@ fun EventConditionFilterCard(
                                 label = "Title Doesn't Contain",
                                 value = state.titleDoesNotContain,
                                 placeholder = "e.g. Private, Personal, Doctor",
+                                isMatchAll = state.titleDoesNotContainMatchAll,
+                                isExclude = true,
+                                onMatchAllChange = { mode -> updateState { s -> s.copy(titleDoesNotContainMatchAll = mode) } },
                                 onValueChange = { updateState { s -> s.copy(titleDoesNotContain = it) } }
                             )
 
@@ -718,6 +757,9 @@ fun EventConditionFilterCard(
                                 label = "Description Contains",
                                 value = state.descriptionContains,
                                 placeholder = "e.g. Zoom, Google Meet, Urgent",
+                                isMatchAll = state.descriptionContainsMatchAll,
+                                isExclude = false,
+                                onMatchAllChange = { mode -> updateState { s -> s.copy(descriptionContainsMatchAll = mode) } },
                                 onValueChange = { updateState { s -> s.copy(descriptionContains = it) } }
                             )
 
@@ -726,6 +768,9 @@ fun EventConditionFilterCard(
                                 label = "Description Doesn't Contain",
                                 value = state.descriptionDoesNotContain,
                                 placeholder = "e.g. Confidential, Draft, Ignore",
+                                isMatchAll = state.descriptionDoesNotContainMatchAll,
+                                isExclude = true,
+                                onMatchAllChange = { mode -> updateState { s -> s.copy(descriptionDoesNotContainMatchAll = mode) } },
                                 onValueChange = { updateState { s -> s.copy(descriptionDoesNotContain = it) } }
                             )
                         }
@@ -1094,16 +1139,81 @@ private fun KeywordInputField(
     label: String,
     value: String,
     placeholder: String,
+    isMatchAll: Boolean = false,
+    isExclude: Boolean = false,
+    onMatchAllChange: (Boolean) -> Unit = {},
     onValueChange: (String) -> Unit
 ) {
+    val words = value.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    val explainer = when {
+        words.isEmpty() -> {
+            if (isExclude) {
+                if (isMatchAll) "Skips only if text contains ALL entered words"
+                else "Skips if text contains ANY entered word"
+            } else {
+                if (isMatchAll) "Matches only if text contains ALL entered words"
+                else "Matches if text contains ANY entered word"
+            }
+        }
+        words.size == 1 -> {
+            if (isExclude) "Skips if text contains '${words.first()}'"
+            else "Matches if text contains '${words.first()}'"
+        }
+        else -> {
+            val formattedList = words.joinToString(if (isMatchAll) " AND " else " OR ") { "'$it'" }
+            if (isExclude) {
+                if (isMatchAll) "Skips only if text contains ALL: $formattedList"
+                else "Skips if text contains ANY: $formattedList"
+            } else {
+                if (isMatchAll) "Matches only if text contains ALL: $formattedList"
+                else "Matches if text contains ANY: $formattedList"
+            }
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = label.uppercase(),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label.uppercase(),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(0.5.dp, if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onMatchAllChange(!isMatchAll) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = if (isMatchAll) "MATCH ALL (AND)" else "MATCH ANY (OR)",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Switch match mode",
+                        tint = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -1121,6 +1231,14 @@ private fun KeywordInputField(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             ),
             modifier = Modifier.fillMaxWidth()
+        )
+
+        Text(
+            text = explainer,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            color = if (words.isNotEmpty()) TitaniumMint.Mint400.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.padding(start = 2.dp)
         )
     }
 }

@@ -118,9 +118,19 @@ fun DeleteScreen(
                     letterSpacing = 0.5.sp
                 )
 
+                val activeCalendarIds = remember(uiState.syncPairs) {
+                    uiState.syncPairs.flatMap { listOf(it.fromCalendarId, it.toCalendarId) }.toSet()
+                }
+                val sortedCalendars = remember(uiState.availableCalendars, activeCalendarIds) {
+                    uiState.availableCalendars.sortedWith(
+                        compareByDescending<com.stripedlens.calcloner.CalendarInfo> { it.id in activeCalendarIds }
+                            .thenBy { it.displayName.lowercase() }
+                    )
+                }
+
                 CalendarDropdown(
                     label = "Target Calendar",
-                    calendars = uiState.availableCalendars,
+                    calendars = sortedCalendars,
                     selectedCalendar = selectedCalendar,
                     filterWritable = true,
                     onCalendarSelected = { cal ->

@@ -1,6 +1,7 @@
 package com.stripedlens.calcloner.ui.components.sheets
 
 import android.provider.CalendarContract
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -182,7 +183,8 @@ private fun FieldAccordionRow(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
+                        .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp)
+                        .graphicsLayer(alpha = if (subOptionsEnabled) 1f else 0.45f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     expandedContent()
@@ -550,7 +552,7 @@ fun SyncFieldOptionsCard(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Choose default availability on target calendar:",
+                                text = if (syncAvailability) "Source availability is mirrored. Turn toggle off to set a fixed override:" else "Choose default availability on target calendar:",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -558,6 +560,7 @@ fun SyncFieldOptionsCard(
                             val isFree = customAvailability == CalendarContract.Events.AVAILABILITY_FREE
                             val isTentative = customAvailability == CalendarContract.Events.AVAILABILITY_TENTATIVE
                             val isEmpty = customAvailability == null
+                            val canEdit = !syncAvailability
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -565,11 +568,11 @@ fun SyncFieldOptionsCard(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isBusy) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isBusy) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isBusy) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isBusy) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_BUSY) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_BUSY) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -578,19 +581,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Busy",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isBusy) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isBusy) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isBusy) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isBusy) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isFree) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isFree) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isFree) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isFree) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_FREE) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_FREE) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -599,8 +602,8 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Free",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isFree) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isFree) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isFree) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isFree) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -612,11 +615,11 @@ fun SyncFieldOptionsCard(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_TENTATIVE) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_TENTATIVE) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -625,19 +628,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Tentative",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isTentative) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isTentative) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isEmpty) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isEmpty) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isEmpty) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isEmpty) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAvailabilityChange(null) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAvailabilityChange(null) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -646,8 +649,8 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Empty",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isEmpty) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isEmpty) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isEmpty) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isEmpty) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -683,14 +686,15 @@ fun SyncFieldOptionsCard(
                             ) {
                                 val isBefore = attendeesPlacement == "START"
                                 val isAfter = attendeesPlacement != "START"
+                                val canEdit = syncAttendees
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isBefore) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isBefore) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isBefore) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isBefore) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onAttendeesPlacementChange("START") }
+                                        .then(if (canEdit) Modifier.clickable { onAttendeesPlacementChange("START") } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
@@ -700,19 +704,19 @@ fun SyncFieldOptionsCard(
                                             text = "Before\nDescription",
                                             textAlign = TextAlign.Center,
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isBefore) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isBefore) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isBefore) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isBefore) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isAfter) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isAfter) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isAfter) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isAfter) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onAttendeesPlacementChange("END") }
+                                        .then(if (canEdit) Modifier.clickable { onAttendeesPlacementChange("END") } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
@@ -722,8 +726,8 @@ fun SyncFieldOptionsCard(
                                             text = "After\nDescription",
                                             textAlign = TextAlign.Center,
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isAfter) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isAfter) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isAfter) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isAfter) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -755,6 +759,7 @@ fun SyncFieldOptionsCard(
                         OutlinedTextField(
                             value = customLocation,
                             onValueChange = onCustomLocationChange,
+                            enabled = !syncLocation,
                             label = { Text("Manual Location (Optional)", fontSize = 12.sp) },
                             placeholder = { Text("e.g. Remote / Teleconference", fontSize = 12.sp) },
                             singleLine = true,
@@ -784,7 +789,7 @@ fun SyncFieldOptionsCard(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Choose default status on target calendar. Android doesn't allow empty (null).",
+                                text = if (syncStatus) "Source status is mirrored. Turn toggle off to set a fixed override:" else "Choose default status on target calendar. Android doesn't allow empty (null).",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -796,14 +801,15 @@ fun SyncFieldOptionsCard(
                                 val isConfirmed = effectiveStatus == CalendarContract.Events.STATUS_CONFIRMED
                                 val isTentative = effectiveStatus == CalendarContract.Events.STATUS_TENTATIVE
                                 val isCanceled = effectiveStatus == CalendarContract.Events.STATUS_CANCELED
+                                val canEdit = !syncStatus
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isConfirmed) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isConfirmed) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isConfirmed) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isConfirmed) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CONFIRMED) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CONFIRMED) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -812,19 +818,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Confirmed",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isConfirmed) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isConfirmed) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isConfirmed) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isConfirmed) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_TENTATIVE) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomStatusChange(CalendarContract.Events.STATUS_TENTATIVE) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -833,19 +839,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Tentative",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isTentative) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isTentative) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isCanceled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isCanceled) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isCanceled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isCanceled) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CANCELED) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CANCELED) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -854,8 +860,8 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Canceled",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isCanceled) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isCanceled) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isCanceled) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isCanceled) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -880,7 +886,7 @@ fun SyncFieldOptionsCard(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Choose visibility on target calendar:",
+                                text = if (syncAccessLevel) "Source visibility is mirrored. Turn toggle off to set a fixed visibility:" else "Choose visibility on target calendar:",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -892,14 +898,15 @@ fun SyncFieldOptionsCard(
                                 val isPublic = effectiveAccess == CalendarContract.Events.ACCESS_PUBLIC
                                 val isPrivate = effectiveAccess == CalendarContract.Events.ACCESS_PRIVATE
                                 val isConfidential = effectiveAccess == CalendarContract.Events.ACCESS_CONFIDENTIAL
+                                val canEdit = !syncAccessLevel
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isPublic) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isPublic) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isPublic) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isPublic) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PUBLIC) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PUBLIC) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -908,19 +915,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Public",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isPublic) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isPublic) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isPublic) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isPublic) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isPrivate) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isPrivate) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isPrivate) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isPrivate) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PRIVATE) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PRIVATE) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -929,19 +936,19 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Private",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isPrivate) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isPrivate) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isPrivate) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isPrivate) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isConfidential) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, if (isConfidential) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    color = if (canEdit && isConfidential) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (canEdit && isConfidential) accentColor else MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_CONFIDENTIAL) }
+                                        .then(if (canEdit) Modifier.clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_CONFIDENTIAL) } else Modifier)
                                 ) {
                                     Box(
                                         modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
@@ -950,8 +957,8 @@ fun SyncFieldOptionsCard(
                                         Text(
                                             text = "Confidential",
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isConfidential) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isConfidential) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (canEdit && isConfidential) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (canEdit && isConfidential) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }

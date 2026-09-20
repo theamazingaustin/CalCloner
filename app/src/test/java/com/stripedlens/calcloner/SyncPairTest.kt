@@ -314,4 +314,147 @@ class SyncPairTest {
         assertTrue(formatted.contains("• bob (Tentative)"))
         assertTrue(formatted.contains("• Charlie Brown (Declined)"))
     }
+
+    @Test
+    fun testFilterCriteriaSerializationRoundtrip() {
+        val pair = SyncPair(
+            id = "filter-pair-1",
+            fromCalendarId = 10L,
+            fromCalendarName = "Source",
+            toCalendarId = 20L,
+            toCalendarName = "Target",
+            filterEnabled = true,
+            filterAllowBusy = false,
+            filterAllowFree = true,
+            filterAllowTentative = true,
+            filterAllowEmpty = false,
+            filterRsvpAccepted = false,
+            filterRsvpTentative = true,
+            filterRsvpDeclined = true,
+            filterIncludeAllDay = false,
+            filterEnableTimeFilter = true,
+            filterFromHour = 10,
+            filterFromMinute = 30,
+            filterToHour = 16,
+            filterToMinute = 45,
+            filterActiveDays = setOf(1, 3, 5),
+            filterTitleContains = "sync, meeting",
+            filterTitleContainsMatchAll = true,
+            filterTitleDoesNotContain = "cancel, skip",
+            filterTitleDoesNotContainMatchAll = false,
+            filterDescriptionContains = "internal",
+            filterDescriptionContainsMatchAll = false,
+            filterDescriptionDoesNotContain = "confidential",
+            filterDescriptionDoesNotContainMatchAll = true
+        )
+
+        val jsonString = SyncPair.listToJsonString(listOf(pair))
+        val restored = SyncPair.listFromJsonString(jsonString).first()
+
+        assertTrue(restored.filterEnabled)
+        assertFalse(restored.filterAllowBusy)
+        assertTrue(restored.filterAllowFree)
+        assertTrue(restored.filterAllowTentative)
+        assertFalse(restored.filterAllowEmpty)
+        assertFalse(restored.filterRsvpAccepted)
+        assertTrue(restored.filterRsvpTentative)
+        assertTrue(restored.filterRsvpDeclined)
+        assertFalse(restored.filterIncludeAllDay)
+        assertTrue(restored.filterEnableTimeFilter)
+        assertEquals(10, restored.filterFromHour)
+        assertEquals(30, restored.filterFromMinute)
+        assertEquals(16, restored.filterToHour)
+        assertEquals(45, restored.filterToMinute)
+        assertEquals(setOf(1, 3, 5), restored.filterActiveDays)
+        assertEquals("sync, meeting", restored.filterTitleContains)
+        assertTrue(restored.filterTitleContainsMatchAll)
+        assertEquals("cancel, skip", restored.filterTitleDoesNotContain)
+        assertFalse(restored.filterTitleDoesNotContainMatchAll)
+        assertEquals("internal", restored.filterDescriptionContains)
+        assertFalse(restored.filterDescriptionContainsMatchAll)
+        assertEquals("confidential", restored.filterDescriptionDoesNotContain)
+        assertTrue(restored.filterDescriptionDoesNotContainMatchAll)
+    }
+
+    @Test
+    fun testEventFilterMatchingLogic() {
+        fun makeEvent(
+            title: String = "Sprint Planning",
+            description: String = "Weekly team sync",
+            dtStart: Long = 1716195600000L, // Monday
+            allDay: Int = 0,
+            availability: Int? = 0,
+            selfAttendeeStatus: Int? = 1
+        ) = SyncEvent(
+            id = 1L,
+            title = title,
+            description = description,
+            location = "Room 101",
+            dtStart = dtStart,
+            dtEnd = dtStart + 3600000L,
+            duration = null,
+            allDay = allDay,
+            timeZone = "UTC",
+            rrule = null,
+            availability = availability,
+            selfAttendeeStatus = selfAttendeeStatus
+        )
+
+        val basePair = SyncPair(
+            id = "filter-test",
+            fromCalendarId = 1L,
+            fromCalendarName = "Source",
+            toCalendarId = 2L,
+            toCalendarName = "Target",
+            filterEnabled = true
+        )
+
+        // Availability filter
+        val busyEvent = makeEvent(availability = 0)
+        val freeEvent = makeEvent(availability = 1)
+        val nullAvailEvent = makeEvent(availability = null)
+
+        val disallowBusyPair = basePair.copy(filterAllowBusy = false, filterAllowFree = true)
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(busyEvent, disallowBusyPair))
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(freeEvent, disallowBusyPair))
+
+        val disallowEmptyPair = basePair.copy(filterAllowEmpty = false)
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(nullAvailEvent, disallowEmptyPair))
+
+        // RSVP filter
+        val declinedEvent = makeEvent(selfAttendeeStatus = 2)
+        val acceptedEvent = makeEvent(selfAttendeeStatus = 1)
+        val disallowDeclinedPair = basePair.copy(filterRsvpDeclined = false, filterRsvpAccepted = true)
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(declinedEvent, disallowDeclinedPair))
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(acceptedEvent, disallowDeclinedPair))
+
+        // All Day filter
+        val allDayEvent = makeEvent(allDay = 1)
+        val disallowAllDayPair = basePair.copy(filterIncludeAllDay = false)
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(allDayEvent, disallowAllDayPair))
+        val allowAllDayPair = basePair.copy(filterIncludeAllDay = true)
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(allDayEvent, allowAllDayPair))
+
+        // Text filter - title contains match all vs any
+        val titlePairMatchAll = basePair.copy(
+            filterTitleContains = "sprint, planning",
+            filterTitleContainsMatchAll = true
+        )
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Sprint Planning"), titlePairMatchAll))
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Sprint Retro"), titlePairMatchAll))
+
+        val titlePairMatchAny = basePair.copy(
+            filterTitleContains = "planning, retro",
+            filterTitleContainsMatchAll = false
+        )
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Sprint Retro"), titlePairMatchAny))
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Team Standup"), titlePairMatchAny))
+
+        // Text filter - title does not contain
+        val titleExclusionPair = basePair.copy(
+            filterTitleDoesNotContain = "canceled, skip"
+        )
+        assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Sprint Planning"), titleExclusionPair))
+        assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Canceled: Sprint Planning"), titleExclusionPair))
+    }
 }

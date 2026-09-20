@@ -37,6 +37,7 @@ import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.components.sheets.PairDeleteSection
 import com.stripedlens.calcloner.ui.components.sheets.SyncConditionsCard
+import com.stripedlens.calcloner.ui.components.filters.EventFilterUiState
 import com.stripedlens.calcloner.ui.components.sheets.SyncFieldOptionsCard
 import com.stripedlens.calcloner.ui.components.sheets.SyncPairErrorBanner
 import com.stripedlens.calcloner.ui.components.sheets.SyncPairNicknameField
@@ -106,6 +107,36 @@ fun AddEditSyncPairSheet(
     var syncAttendees by remember { mutableStateOf(pairToEdit?.syncAttendees ?: false) }
     var attendeesPlacement by remember { mutableStateOf(pairToEdit?.attendeesPlacement ?: "END") }
 
+    var filterUiState by remember {
+        mutableStateOf(
+            EventFilterUiState(
+                isEnabled = pairToEdit?.filterEnabled ?: false,
+                allowBusy = pairToEdit?.filterAllowBusy ?: true,
+                allowFree = pairToEdit?.filterAllowFree ?: true,
+                allowTentative = pairToEdit?.filterAllowTentative ?: false,
+                allowEmpty = pairToEdit?.filterAllowEmpty ?: true,
+                rsvpAccepted = pairToEdit?.filterRsvpAccepted ?: true,
+                rsvpTentative = pairToEdit?.filterRsvpTentative ?: false,
+                rsvpDeclined = pairToEdit?.filterRsvpDeclined ?: false,
+                includeAllDayEvents = pairToEdit?.filterIncludeAllDay ?: true,
+                enableTimeFilter = pairToEdit?.filterEnableTimeFilter ?: false,
+                fromHour = pairToEdit?.filterFromHour ?: 9,
+                fromMinute = pairToEdit?.filterFromMinute ?: 0,
+                toHour = pairToEdit?.filterToHour ?: 17,
+                toMinute = pairToEdit?.filterToMinute ?: 0,
+                activeDays = pairToEdit?.filterActiveDays ?: setOf(1, 2, 3, 4, 5, 6, 7),
+                titleContains = pairToEdit?.filterTitleContains ?: "",
+                titleContainsMatchAll = pairToEdit?.filterTitleContainsMatchAll ?: false,
+                titleDoesNotContain = pairToEdit?.filterTitleDoesNotContain ?: "",
+                titleDoesNotContainMatchAll = pairToEdit?.filterTitleDoesNotContainMatchAll ?: false,
+                descriptionContains = pairToEdit?.filterDescriptionContains ?: "",
+                descriptionContainsMatchAll = pairToEdit?.filterDescriptionContainsMatchAll ?: false,
+                descriptionDoesNotContain = pairToEdit?.filterDescriptionDoesNotContain ?: "",
+                descriptionDoesNotContainMatchAll = pairToEdit?.filterDescriptionDoesNotContainMatchAll ?: false
+            )
+        )
+    }
+
     val context = LocalContext.current
     var syncedEventsCount by remember { mutableIntStateOf(0) }
 
@@ -119,7 +150,7 @@ fun AddEditSyncPairSheet(
         syncDescription, customDescription, descriptionPrefix, descriptionSuffix,
         syncLocation, customLocation, syncReminders, syncAvailability,
         customAvailability, syncStatus, customStatus, syncAccessLevel, customAccessLevel,
-        syncAttendees, attendeesPlacement, pairToEdit
+        syncAttendees, attendeesPlacement, filterUiState, pairToEdit
     ) {
         if (pairToEdit != null) {
             nickname != (pairToEdit.nickname ?: "") ||
@@ -146,7 +177,30 @@ fun AddEditSyncPairSheet(
             syncAccessLevel != pairToEdit.syncAccessLevel ||
             customAccessLevel != pairToEdit.customAccessLevel ||
             syncAttendees != pairToEdit.syncAttendees ||
-            attendeesPlacement != pairToEdit.attendeesPlacement
+            attendeesPlacement != pairToEdit.attendeesPlacement ||
+            filterUiState.isEnabled != pairToEdit.filterEnabled ||
+            filterUiState.allowBusy != pairToEdit.filterAllowBusy ||
+            filterUiState.allowFree != pairToEdit.filterAllowFree ||
+            filterUiState.allowTentative != pairToEdit.filterAllowTentative ||
+            filterUiState.allowEmpty != pairToEdit.filterAllowEmpty ||
+            filterUiState.rsvpAccepted != pairToEdit.filterRsvpAccepted ||
+            filterUiState.rsvpTentative != pairToEdit.filterRsvpTentative ||
+            filterUiState.rsvpDeclined != pairToEdit.filterRsvpDeclined ||
+            filterUiState.includeAllDayEvents != pairToEdit.filterIncludeAllDay ||
+            filterUiState.enableTimeFilter != pairToEdit.filterEnableTimeFilter ||
+            filterUiState.fromHour != pairToEdit.filterFromHour ||
+            filterUiState.fromMinute != pairToEdit.filterFromMinute ||
+            filterUiState.toHour != pairToEdit.filterToHour ||
+            filterUiState.toMinute != pairToEdit.filterToMinute ||
+            filterUiState.activeDays != pairToEdit.filterActiveDays ||
+            filterUiState.titleContains != pairToEdit.filterTitleContains ||
+            filterUiState.titleContainsMatchAll != pairToEdit.filterTitleContainsMatchAll ||
+            filterUiState.titleDoesNotContain != pairToEdit.filterTitleDoesNotContain ||
+            filterUiState.titleDoesNotContainMatchAll != pairToEdit.filterTitleDoesNotContainMatchAll ||
+            filterUiState.descriptionContains != pairToEdit.filterDescriptionContains ||
+            filterUiState.descriptionContainsMatchAll != pairToEdit.filterDescriptionContainsMatchAll ||
+            filterUiState.descriptionDoesNotContain != pairToEdit.filterDescriptionDoesNotContain ||
+            filterUiState.descriptionDoesNotContainMatchAll != pairToEdit.filterDescriptionDoesNotContainMatchAll
         } else {
             nickname.isNotBlank() ||
             selectedFromCal != null ||
@@ -171,7 +225,22 @@ fun AddEditSyncPairSheet(
             !syncAccessLevel ||
             customAccessLevel != null ||
             syncAttendees ||
-            attendeesPlacement != "END"
+            attendeesPlacement != "END" ||
+            filterUiState.isEnabled ||
+            filterUiState.titleContains.isNotBlank() ||
+            filterUiState.titleDoesNotContain.isNotBlank() ||
+            filterUiState.descriptionContains.isNotBlank() ||
+            filterUiState.descriptionDoesNotContain.isNotBlank() ||
+            filterUiState.enableTimeFilter ||
+            !filterUiState.includeAllDayEvents ||
+            filterUiState.activeDays != setOf(1, 2, 3, 4, 5, 6, 7) ||
+            !filterUiState.allowBusy ||
+            !filterUiState.allowFree ||
+            filterUiState.allowTentative ||
+            !filterUiState.allowEmpty ||
+            !filterUiState.rsvpAccepted ||
+            filterUiState.rsvpTentative ||
+            filterUiState.rsvpDeclined
         }
     }
 
@@ -365,6 +434,8 @@ fun AddEditSyncPairSheet(
 
     val fieldValidationError = if (!syncTitle && customTitle.isBlank()) {
         "A title is required when event title mirroring is turned off."
+    } else if (filterUiState.isEnabled && filterUiState.validationError != null) {
+        filterUiState.validationError
     } else null
 
     val isConfigValidForSync = fieldValidationError == null
@@ -373,7 +444,8 @@ fun AddEditSyncPairSheet(
             toId != null &&
             !isSameCalendar &&
             !hasCycle &&
-            (selectedToCal?.canWrite == true)
+            (selectedToCal?.canWrite == true) &&
+            (!filterUiState.isEnabled || filterUiState.validationError == null)
 
     val canSync = canSave && isConfigValidForSync && !isSyncing
 
@@ -410,7 +482,30 @@ fun AddEditSyncPairSheet(
             syncAccessLevel = syncAccessLevel,
             customAccessLevel = if (!syncAccessLevel) customAccessLevel else null,
             syncAttendees = syncAttendees,
-            attendeesPlacement = attendeesPlacement
+            attendeesPlacement = attendeesPlacement,
+            filterEnabled = filterUiState.isEnabled,
+            filterAllowBusy = filterUiState.allowBusy,
+            filterAllowFree = filterUiState.allowFree,
+            filterAllowTentative = filterUiState.allowTentative,
+            filterAllowEmpty = filterUiState.allowEmpty,
+            filterRsvpAccepted = filterUiState.rsvpAccepted,
+            filterRsvpTentative = filterUiState.rsvpTentative,
+            filterRsvpDeclined = filterUiState.rsvpDeclined,
+            filterIncludeAllDay = filterUiState.includeAllDayEvents,
+            filterEnableTimeFilter = filterUiState.enableTimeFilter,
+            filterFromHour = filterUiState.fromHour,
+            filterFromMinute = filterUiState.fromMinute,
+            filterToHour = filterUiState.toHour,
+            filterToMinute = filterUiState.toMinute,
+            filterActiveDays = filterUiState.activeDays,
+            filterTitleContains = filterUiState.titleContains,
+            filterTitleContainsMatchAll = filterUiState.titleContainsMatchAll,
+            filterTitleDoesNotContain = filterUiState.titleDoesNotContain,
+            filterTitleDoesNotContainMatchAll = filterUiState.titleDoesNotContainMatchAll,
+            filterDescriptionContains = filterUiState.descriptionContains,
+            filterDescriptionContainsMatchAll = filterUiState.descriptionContainsMatchAll,
+            filterDescriptionDoesNotContain = filterUiState.descriptionDoesNotContain,
+            filterDescriptionDoesNotContainMatchAll = filterUiState.descriptionDoesNotContainMatchAll
         )
     }
 
@@ -805,7 +900,10 @@ fun AddEditSyncPairSheet(
                     )
 
                     // Sync Conditions & Filters (Interactive Rule Engine UI)
-                    SyncConditionsCard()
+                    SyncConditionsCard(
+                        initialState = filterUiState,
+                        onStateChange = { filterUiState = it }
+                    )
 
                     // Delete Pair Configuration Section
                     PairDeleteSection(

@@ -78,6 +78,7 @@ data class EventFilterUiState(
     val allowBusy: Boolean = true,
     val allowFree: Boolean = true,
     val allowTentative: Boolean = false,
+    val allowEmpty: Boolean = true,
     // RSVP
     val rsvpAccepted: Boolean = true,
     val rsvpTentative: Boolean = false,
@@ -106,8 +107,8 @@ data class EventFilterUiState(
      */
     val validationError: String?
         get() {
-            if (!allowBusy && !allowFree && !allowTentative) {
-                return "At least one availability option (Busy, Free, or Tentative) must be selected."
+            if (!allowBusy && !allowFree && !allowTentative && !allowEmpty) {
+                return "At least one availability option (Busy, Free, Tentative, or Empty) must be selected."
             }
             if (!rsvpAccepted && !rsvpTentative && !rsvpDeclined) {
                 return "At least one RSVP status (Accepted, Tentative, or Declined) must be selected."
@@ -146,7 +147,7 @@ data class EventFilterUiState(
     val activeRuleCount: Int
         get() {
             var count = 0
-            if (!allowFree || !allowBusy || allowTentative) count++
+            if (!allowFree || !allowBusy || allowTentative || !allowEmpty) count++
             if (!rsvpAccepted || rsvpTentative || rsvpDeclined) count++
             if (!includeAllDayEvents) count++
             if (enableTimeFilter) count++
@@ -503,7 +504,7 @@ fun EventConditionFilterCard(
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 FilterCheckboxRow(
                                     label = "Busy",
@@ -511,7 +512,7 @@ fun EventConditionFilterCard(
                                     onCheckedChange = { updateState { s -> s.copy(allowBusy = it) } }
                                 )
                                 FilterCheckboxRow(
-                                    label = "Free / Transparent",
+                                    label = "Free",
                                     checked = state.allowFree,
                                     onCheckedChange = { updateState { s -> s.copy(allowFree = it) } }
                                 )
@@ -519,6 +520,11 @@ fun EventConditionFilterCard(
                                     label = "Tentative",
                                     checked = state.allowTentative,
                                     onCheckedChange = { updateState { s -> s.copy(allowTentative = it) } }
+                                )
+                                FilterCheckboxRow(
+                                    label = "Empty",
+                                    checked = state.allowEmpty,
+                                    onCheckedChange = { updateState { s -> s.copy(allowEmpty = it) } }
                                 )
                             }
 
@@ -733,7 +739,7 @@ fun EventConditionFilterCard(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "💡 Separate multiple words or phrases with a comma (e.g. 'standup, team meeting, sync')",
+                                    text = "💡 Separate multiple words or phrases with a comma (e.g. 'standup, team meeting, sync')\nClick to toggle between \"ANY\" and \"ALL\".",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)

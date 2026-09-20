@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.CalendarContract
 import com.stripedlens.calcloner.SyncAttendee
 import com.stripedlens.calcloner.SyncEvent
+import com.stripedlens.calcloner.SyncPair
 import com.stripedlens.calcloner.SyncReminder
 import com.stripedlens.calcloner.SyncResult
 import java.time.Instant
@@ -16,6 +17,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
+import java.util.Calendar
 import java.util.TimeZone
 
 /**
@@ -390,6 +392,167 @@ object CalendarEventWriter {
         }
     }
 
+    fun matchesFilters(
+        event: SyncEvent,
+        filterEnabled: Boolean,
+        filterAllowBusy: Boolean = true,
+        filterAllowFree: Boolean = true,
+        filterAllowTentative: Boolean = false,
+        filterAllowEmpty: Boolean = true,
+        filterRsvpAccepted: Boolean = true,
+        filterRsvpTentative: Boolean = false,
+        filterRsvpDeclined: Boolean = false,
+        filterIncludeAllDay: Boolean = true,
+        filterEnableTimeFilter: Boolean = false,
+        filterFromHour: Int = 9,
+        filterFromMinute: Int = 0,
+        filterToHour: Int = 17,
+        filterToMinute: Int = 0,
+        filterActiveDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
+        filterTitleContains: String = "",
+        filterTitleContainsMatchAll: Boolean = false,
+        filterTitleDoesNotContain: String = "",
+        filterTitleDoesNotContainMatchAll: Boolean = false,
+        filterDescriptionContains: String = "",
+        filterDescriptionContainsMatchAll: Boolean = false,
+        filterDescriptionDoesNotContain: String = "",
+        filterDescriptionDoesNotContainMatchAll: Boolean = false,
+        deviceTimeZone: TimeZone = TimeZone.getDefault()
+    ): Boolean {
+        if (!filterEnabled) return true
+
+        // 1. Availability Filter
+        val availMatches = when (event.availability) {
+            CalendarContract.Events.AVAILABILITY_BUSY -> filterAllowBusy
+            CalendarContract.Events.AVAILABILITY_FREE -> filterAllowFree
+            CalendarContract.Events.AVAILABILITY_TENTATIVE -> filterAllowTentative
+            null -> filterAllowEmpty
+            else -> filterAllowBusy
+        }
+        if (!availMatches) return false
+
+        // 2. RSVP Status Filter
+        val rsvpMatches = when (event.selfAttendeeStatus) {
+            CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED -> filterRsvpAccepted
+            CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE -> filterRsvpTentative
+            CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED -> filterRsvpDeclined
+            0, null -> filterRsvpAccepted
+            else -> filterRsvpAccepted
+        }
+        if (!rsvpMatches) return false
+
+        // 3. Day of week & Time Window
+        val tz = if (!event.timeZone.isNullOrBlank()) {
+            try { TimeZone.getTimeZone(event.timeZone) } catch (_: Exception) { deviceTimeZone }
+        } else {
+            deviceTimeZone
+        }
+        val cal = Calendar.getInstance(tz).apply { timeInMillis = event.dtStart }
+        val isoDayOfWeek = when (cal.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 1
+            Calendar.TUESDAY -> 2
+            Calendar.WEDNESDAY -> 3
+            Calendar.THURSDAY -> 4
+            Calendar.FRIDAY -> 5
+            Calendar.SATURDAY -> 6
+            Calendar.SUNDAY -> 7
+            else -> 1
+        }
+        if (isoDayOfWeek !in filterActiveDays) return false
+
+        // 4. All-day vs Timed events
+        val isAllDay = (event.allDay == 1)
+        if (isAllDay) {
+            if (!filterIncludeAllDay) return false
+        } else if (filterEnableTimeFilter) {
+            val eventHour = cal.get(Calendar.HOUR_OF_DAY)
+            val eventMinute = cal.get(Calendar.MINUTE)
+            val eventTotalMins = eventHour * 60 + eventMinute
+            val fromTotalMins = filterFromHour * 60 + filterFromMinute
+            val toTotalMins = filterToHour * 60 + filterToMinute
+            if (eventTotalMins < fromTotalMins || eventTotalMins > toTotalMins) return false
+        }
+
+        // 5. Title filtering
+        val eventTitle = (event.title ?: "").lowercase()
+        if (filterTitleContains.isNotBlank()) {
+            val keywords = filterTitleContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (keywords.isNotEmpty()) {
+                val matches = if (filterTitleContainsMatchAll) {
+                    keywords.all { eventTitle.contains(it) }
+                } else {
+                    keywords.any { eventTitle.contains(it) }
+                }
+                if (!matches) return false
+            }
+        }
+        if (filterTitleDoesNotContain.isNotBlank()) {
+            val keywords = filterTitleDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (keywords.isNotEmpty()) {
+                val hasExcluded = if (filterTitleDoesNotContainMatchAll) {
+                    keywords.all { eventTitle.contains(it) }
+                } else {
+                    keywords.any { eventTitle.contains(it) }
+                }
+                if (hasExcluded) return false
+            }
+        }
+
+        // 6. Description filtering
+        val eventDesc = (event.description ?: "").lowercase()
+        if (filterDescriptionContains.isNotBlank()) {
+            val keywords = filterDescriptionContains.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (keywords.isNotEmpty()) {
+                val matches = if (filterDescriptionContainsMatchAll) {
+                    keywords.all { eventDesc.contains(it) }
+                } else {
+                    keywords.any { eventDesc.contains(it) }
+                }
+                if (!matches) return false
+            }
+        }
+        if (filterDescriptionDoesNotContain.isNotBlank()) {
+            val keywords = filterDescriptionDoesNotContain.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (keywords.isNotEmpty()) {
+                val hasExcluded = if (filterDescriptionDoesNotContainMatchAll) {
+                    keywords.all { eventDesc.contains(it) }
+                } else {
+                    keywords.any { eventDesc.contains(it) }
+                }
+                if (hasExcluded) return false
+            }
+        }
+
+        return true
+    }
+
+    fun matchesFilters(event: SyncEvent, pair: SyncPair): Boolean = matchesFilters(
+        event = event,
+        filterEnabled = pair.filterEnabled,
+        filterAllowBusy = pair.filterAllowBusy,
+        filterAllowFree = pair.filterAllowFree,
+        filterAllowTentative = pair.filterAllowTentative,
+        filterAllowEmpty = pair.filterAllowEmpty,
+        filterRsvpAccepted = pair.filterRsvpAccepted,
+        filterRsvpTentative = pair.filterRsvpTentative,
+        filterRsvpDeclined = pair.filterRsvpDeclined,
+        filterIncludeAllDay = pair.filterIncludeAllDay,
+        filterEnableTimeFilter = pair.filterEnableTimeFilter,
+        filterFromHour = pair.filterFromHour,
+        filterFromMinute = pair.filterFromMinute,
+        filterToHour = pair.filterToHour,
+        filterToMinute = pair.filterToMinute,
+        filterActiveDays = pair.filterActiveDays,
+        filterTitleContains = pair.filterTitleContains,
+        filterTitleContainsMatchAll = pair.filterTitleContainsMatchAll,
+        filterTitleDoesNotContain = pair.filterTitleDoesNotContain,
+        filterTitleDoesNotContainMatchAll = pair.filterTitleDoesNotContainMatchAll,
+        filterDescriptionContains = pair.filterDescriptionContains,
+        filterDescriptionContainsMatchAll = pair.filterDescriptionContainsMatchAll,
+        filterDescriptionDoesNotContain = pair.filterDescriptionDoesNotContain,
+        filterDescriptionDoesNotContainMatchAll = pair.filterDescriptionDoesNotContainMatchAll
+    )
+
     /**
      * Executes the replication algorithm from source to target calendar.
      */
@@ -419,6 +582,29 @@ object CalendarEventWriter {
         customAccessLevel: Int? = null,
         syncAttendees: Boolean = false,
         attendeesPlacement: String = "END",
+        filterEnabled: Boolean = false,
+        filterAllowBusy: Boolean = true,
+        filterAllowFree: Boolean = true,
+        filterAllowTentative: Boolean = false,
+        filterAllowEmpty: Boolean = true,
+        filterRsvpAccepted: Boolean = true,
+        filterRsvpTentative: Boolean = false,
+        filterRsvpDeclined: Boolean = false,
+        filterIncludeAllDay: Boolean = true,
+        filterEnableTimeFilter: Boolean = false,
+        filterFromHour: Int = 9,
+        filterFromMinute: Int = 0,
+        filterToHour: Int = 17,
+        filterToMinute: Int = 0,
+        filterActiveDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
+        filterTitleContains: String = "",
+        filterTitleContainsMatchAll: Boolean = false,
+        filterTitleDoesNotContain: String = "",
+        filterTitleDoesNotContainMatchAll: Boolean = false,
+        filterDescriptionContains: String = "",
+        filterDescriptionContainsMatchAll: Boolean = false,
+        filterDescriptionDoesNotContain: String = "",
+        filterDescriptionDoesNotContainMatchAll: Boolean = false,
         activePairIds: Set<String> = emptySet(),
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
         onSelfWrite: (() -> Unit)? = null
@@ -436,7 +622,40 @@ object CalendarEventWriter {
         }
 
         onProgress?.invoke(0, 0, "Reading source calendar...")
-        val sourceEvents = CalendarProviderReader.readSourceEvents(context, fromCalendarId, daysPast, daysFuture)
+        val rawSourceEvents = CalendarProviderReader.readSourceEvents(context, fromCalendarId, daysPast, daysFuture)
+
+        val (sourceEvents, excludedSourceEvents) = if (filterEnabled) {
+            rawSourceEvents.partition { event ->
+                matchesFilters(
+                    event = event,
+                    filterEnabled = filterEnabled,
+                    filterAllowBusy = filterAllowBusy,
+                    filterAllowFree = filterAllowFree,
+                    filterAllowTentative = filterAllowTentative,
+                    filterAllowEmpty = filterAllowEmpty,
+                    filterRsvpAccepted = filterRsvpAccepted,
+                    filterRsvpTentative = filterRsvpTentative,
+                    filterRsvpDeclined = filterRsvpDeclined,
+                    filterIncludeAllDay = filterIncludeAllDay,
+                    filterEnableTimeFilter = filterEnableTimeFilter,
+                    filterFromHour = filterFromHour,
+                    filterFromMinute = filterFromMinute,
+                    filterToHour = filterToHour,
+                    filterToMinute = filterToMinute,
+                    filterActiveDays = filterActiveDays,
+                    filterTitleContains = filterTitleContains,
+                    filterTitleContainsMatchAll = filterTitleContainsMatchAll,
+                    filterTitleDoesNotContain = filterTitleDoesNotContain,
+                    filterTitleDoesNotContainMatchAll = filterTitleDoesNotContainMatchAll,
+                    filterDescriptionContains = filterDescriptionContains,
+                    filterDescriptionContainsMatchAll = filterDescriptionContainsMatchAll,
+                    filterDescriptionDoesNotContain = filterDescriptionDoesNotContain,
+                    filterDescriptionDoesNotContainMatchAll = filterDescriptionDoesNotContainMatchAll
+                )
+            }
+        } else {
+            Pair(rawSourceEvents, emptyList<SyncEvent>())
+        }
         val total = sourceEvents.size
 
         val now = System.currentTimeMillis()
@@ -749,8 +968,9 @@ object CalendarEventWriter {
             syncSingleEvent(event, targetParentId)
         }
 
-        // Pruning out-of-window and deleted events
+        // Pruning out-of-window, filter-excluded, and deleted events
         val activeSourceIds = sourceEvents.map { it.id }.toSet()
+        val excludedSourceIds = excludedSourceEvents.map { it.id }.toSet()
         var deletedCount = 0
         val eventsToDelete = mutableListOf<Long>()
         val candidateSourceIds = mutableListOf<Long>()
@@ -758,6 +978,8 @@ object CalendarEventWriter {
         for ((sourceId, meta) in existingTargetEvents) {
             val isOutOfWindow = !meta.hasRrule && (meta.dtStart < windowStart || meta.dtStart > windowEnd)
             if (isOutOfWindow) {
+                eventsToDelete.add(meta.targetId)
+            } else if (sourceId in excludedSourceIds) {
                 eventsToDelete.add(meta.targetId)
             } else if (sourceId !in activeSourceIds) {
                 candidateSourceIds.add(sourceId)

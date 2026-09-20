@@ -42,7 +42,8 @@ data class SyncEvent(
     val availability: Int? = null,
     val accessLevel: Int? = null,
     val exdate: String? = null,
-    val attendees: List<SyncAttendee> = emptyList()
+    val attendees: List<SyncAttendee> = emptyList(),
+    val selfAttendeeStatus: Int? = null
 )
 
 data class SyncResult(
@@ -82,6 +83,30 @@ data class SyncPair(
     val customAccessLevel: Int? = null,
     val syncAttendees: Boolean = false,
     val attendeesPlacement: String = "END",
+    // Condition Filters
+    val filterEnabled: Boolean = false,
+    val filterAllowBusy: Boolean = true,
+    val filterAllowFree: Boolean = true,
+    val filterAllowTentative: Boolean = false,
+    val filterAllowEmpty: Boolean = true,
+    val filterRsvpAccepted: Boolean = true,
+    val filterRsvpTentative: Boolean = false,
+    val filterRsvpDeclined: Boolean = false,
+    val filterIncludeAllDay: Boolean = true,
+    val filterEnableTimeFilter: Boolean = false,
+    val filterFromHour: Int = 9,
+    val filterFromMinute: Int = 0,
+    val filterToHour: Int = 17,
+    val filterToMinute: Int = 0,
+    val filterActiveDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
+    val filterTitleContains: String = "",
+    val filterTitleContainsMatchAll: Boolean = false,
+    val filterTitleDoesNotContain: String = "",
+    val filterTitleDoesNotContainMatchAll: Boolean = false,
+    val filterDescriptionContains: String = "",
+    val filterDescriptionContainsMatchAll: Boolean = false,
+    val filterDescriptionDoesNotContain: String = "",
+    val filterDescriptionDoesNotContainMatchAll: Boolean = false,
     val lastSyncTime: Long? = null,
     val lastSyncStatus: String? = null,
     val lastInsertedCount: Int = 0,
@@ -138,6 +163,29 @@ data class SyncPair(
         if (customAccessLevel != null) put("customAccessLevel", customAccessLevel)
         put("syncAttendees", syncAttendees)
         put("attendeesPlacement", attendeesPlacement)
+        put("filterEnabled", filterEnabled)
+        put("filterAllowBusy", filterAllowBusy)
+        put("filterAllowFree", filterAllowFree)
+        put("filterAllowTentative", filterAllowTentative)
+        put("filterAllowEmpty", filterAllowEmpty)
+        put("filterRsvpAccepted", filterRsvpAccepted)
+        put("filterRsvpTentative", filterRsvpTentative)
+        put("filterRsvpDeclined", filterRsvpDeclined)
+        put("filterIncludeAllDay", filterIncludeAllDay)
+        put("filterEnableTimeFilter", filterEnableTimeFilter)
+        put("filterFromHour", filterFromHour)
+        put("filterFromMinute", filterFromMinute)
+        put("filterToHour", filterToHour)
+        put("filterToMinute", filterToMinute)
+        put("filterActiveDays", filterActiveDays.joinToString(","))
+        if (filterTitleContains.isNotEmpty()) put("filterTitleContains", filterTitleContains)
+        put("filterTitleContainsMatchAll", filterTitleContainsMatchAll)
+        if (filterTitleDoesNotContain.isNotEmpty()) put("filterTitleDoesNotContain", filterTitleDoesNotContain)
+        put("filterTitleDoesNotContainMatchAll", filterTitleDoesNotContainMatchAll)
+        if (filterDescriptionContains.isNotEmpty()) put("filterDescriptionContains", filterDescriptionContains)
+        put("filterDescriptionContainsMatchAll", filterDescriptionContainsMatchAll)
+        if (filterDescriptionDoesNotContain.isNotEmpty()) put("filterDescriptionDoesNotContain", filterDescriptionDoesNotContain)
+        put("filterDescriptionDoesNotContainMatchAll", filterDescriptionDoesNotContainMatchAll)
         if (lastSyncTime != null) put("lastSyncTime", lastSyncTime)
         if (lastSyncStatus != null) put("lastSyncStatus", lastSyncStatus)
         put("lastInsertedCount", lastInsertedCount)
@@ -174,7 +222,30 @@ data class SyncPair(
             syncAccessLevel: Boolean = true,
             customAccessLevel: Int? = null,
             syncAttendees: Boolean = false,
-            attendeesPlacement: String = "END"
+            attendeesPlacement: String = "END",
+            filterEnabled: Boolean = false,
+            filterAllowBusy: Boolean = true,
+            filterAllowFree: Boolean = true,
+            filterAllowTentative: Boolean = false,
+            filterAllowEmpty: Boolean = true,
+            filterRsvpAccepted: Boolean = true,
+            filterRsvpTentative: Boolean = false,
+            filterRsvpDeclined: Boolean = false,
+            filterIncludeAllDay: Boolean = true,
+            filterEnableTimeFilter: Boolean = false,
+            filterFromHour: Int = 9,
+            filterFromMinute: Int = 0,
+            filterToHour: Int = 17,
+            filterToMinute: Int = 0,
+            filterActiveDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
+            filterTitleContains: String = "",
+            filterTitleContainsMatchAll: Boolean = false,
+            filterTitleDoesNotContain: String = "",
+            filterTitleDoesNotContainMatchAll: Boolean = false,
+            filterDescriptionContains: String = "",
+            filterDescriptionContainsMatchAll: Boolean = false,
+            filterDescriptionDoesNotContain: String = "",
+            filterDescriptionDoesNotContainMatchAll: Boolean = false
         ): SyncPair = SyncPair(
             id = java.util.UUID.randomUUID().toString(),
             nickname = nickname,
@@ -203,7 +274,30 @@ data class SyncPair(
             syncAccessLevel = syncAccessLevel,
             customAccessLevel = customAccessLevel,
             syncAttendees = syncAttendees,
-            attendeesPlacement = attendeesPlacement
+            attendeesPlacement = attendeesPlacement,
+            filterEnabled = filterEnabled,
+            filterAllowBusy = filterAllowBusy,
+            filterAllowFree = filterAllowFree,
+            filterAllowTentative = filterAllowTentative,
+            filterAllowEmpty = filterAllowEmpty,
+            filterRsvpAccepted = filterRsvpAccepted,
+            filterRsvpTentative = filterRsvpTentative,
+            filterRsvpDeclined = filterRsvpDeclined,
+            filterIncludeAllDay = filterIncludeAllDay,
+            filterEnableTimeFilter = filterEnableTimeFilter,
+            filterFromHour = filterFromHour,
+            filterFromMinute = filterFromMinute,
+            filterToHour = filterToHour,
+            filterToMinute = filterToMinute,
+            filterActiveDays = filterActiveDays,
+            filterTitleContains = filterTitleContains,
+            filterTitleContainsMatchAll = filterTitleContainsMatchAll,
+            filterTitleDoesNotContain = filterTitleDoesNotContain,
+            filterTitleDoesNotContainMatchAll = filterTitleDoesNotContainMatchAll,
+            filterDescriptionContains = filterDescriptionContains,
+            filterDescriptionContainsMatchAll = filterDescriptionContainsMatchAll,
+            filterDescriptionDoesNotContain = filterDescriptionDoesNotContain,
+            filterDescriptionDoesNotContainMatchAll = filterDescriptionDoesNotContainMatchAll
         )
 
         fun fromJson(json: org.json.JSONObject): SyncPair = SyncPair(
@@ -235,6 +329,33 @@ data class SyncPair(
             customAccessLevel = if (json.has("customAccessLevel") && !json.isNull("customAccessLevel")) json.getInt("customAccessLevel") else null,
             syncAttendees = json.optBoolean("syncAttendees", false),
             attendeesPlacement = json.optString("attendeesPlacement", "END"),
+            filterEnabled = json.optBoolean("filterEnabled", false),
+            filterAllowBusy = json.optBoolean("filterAllowBusy", true),
+            filterAllowFree = json.optBoolean("filterAllowFree", true),
+            filterAllowTentative = json.optBoolean("filterAllowTentative", false),
+            filterAllowEmpty = json.optBoolean("filterAllowEmpty", true),
+            filterRsvpAccepted = json.optBoolean("filterRsvpAccepted", true),
+            filterRsvpTentative = json.optBoolean("filterRsvpTentative", false),
+            filterRsvpDeclined = json.optBoolean("filterRsvpDeclined", false),
+            filterIncludeAllDay = json.optBoolean("filterIncludeAllDay", true),
+            filterEnableTimeFilter = json.optBoolean("filterEnableTimeFilter", false),
+            filterFromHour = json.optInt("filterFromHour", 9),
+            filterFromMinute = json.optInt("filterFromMinute", 0),
+            filterToHour = json.optInt("filterToHour", 17),
+            filterToMinute = json.optInt("filterToMinute", 0),
+            filterActiveDays = json.optString("filterActiveDays", "1,2,3,4,5,6,7")
+                .split(",")
+                .mapNotNull { it.trim().toIntOrNull() }
+                .toSet()
+                .ifEmpty { setOf(1, 2, 3, 4, 5, 6, 7) },
+            filterTitleContains = json.optString("filterTitleContains", ""),
+            filterTitleContainsMatchAll = json.optBoolean("filterTitleContainsMatchAll", false),
+            filterTitleDoesNotContain = json.optString("filterTitleDoesNotContain", ""),
+            filterTitleDoesNotContainMatchAll = json.optBoolean("filterTitleDoesNotContainMatchAll", false),
+            filterDescriptionContains = json.optString("filterDescriptionContains", ""),
+            filterDescriptionContainsMatchAll = json.optBoolean("filterDescriptionContainsMatchAll", false),
+            filterDescriptionDoesNotContain = json.optString("filterDescriptionDoesNotContain", ""),
+            filterDescriptionDoesNotContainMatchAll = json.optBoolean("filterDescriptionDoesNotContainMatchAll", false),
             lastSyncTime = if (json.has("lastSyncTime") && !json.isNull("lastSyncTime")) json.getLong("lastSyncTime") else null,
             lastSyncStatus = if (json.has("lastSyncStatus") && !json.isNull("lastSyncStatus")) json.getString("lastSyncStatus") else null,
             lastInsertedCount = json.optInt("lastInsertedCount", 0),

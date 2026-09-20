@@ -88,6 +88,10 @@ class CalendarSyncWorker(
                 prefix = "Auto-sync"
             )
 
+            try {
+                CalendarSyncEngine.purgeSyncedTombstones(appContext)
+            } catch (_: Exception) {}
+
             repo.saveLastSync(System.currentTimeMillis(), statusMsg)
             if (failedPairs.isNotEmpty()) Result.retry() else Result.success()
         } catch (e: SecurityException) {

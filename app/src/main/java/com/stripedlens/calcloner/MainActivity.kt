@@ -74,6 +74,7 @@ import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.CalClonerTopBar
 import com.stripedlens.calcloner.ui.dialogs.MainDialogHost
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
+import com.stripedlens.calcloner.ui.screens.IcsImportExportScreen
 import com.stripedlens.calcloner.ui.screens.OneTimeCopyScreen
 import com.stripedlens.calcloner.ui.screens.OneTimeOperationsScreen
 import com.stripedlens.calcloner.ui.screens.SyncScreen
@@ -404,7 +405,8 @@ fun CalendarSyncApp(
                     OneTimeOperationsScreen(
                         uiState = uiState,
                         onOpenDeleteScreen = { viewModel.selectTab(AppTab.DELETE) },
-                        onOpenCopyScreen = { viewModel.selectTab(AppTab.ONE_TIME_COPY) }
+                        onOpenCopyScreen = { viewModel.selectTab(AppTab.ONE_TIME_COPY) },
+                        onOpenIcsScreen = { viewModel.selectTab(AppTab.ONE_TIME_ICS) }
                     )
                 }
                 AppTab.DELETE -> {
@@ -426,6 +428,24 @@ fun CalendarSyncApp(
                         onDateWindowChanged = { past, future -> viewModel.setOneTimeDateWindow(past, future) },
                         onExecuteCopy = { viewModel.executeOneTimeCopy() },
                         onDismissCopyResult = { viewModel.dismissOneTimeCopyResult() }
+                    )
+                }
+                AppTab.ONE_TIME_ICS -> {
+                    IcsImportExportScreen(
+                        uiState = uiState,
+                        onNavigateBack = { viewModel.selectTab(AppTab.ONE_TIME) },
+                        onSelectExportCalendar = { calId, selected -> viewModel.toggleIcsCalendarSelected(calId, selected) },
+                        onSelectAllExportCalendars = { selectAll -> viewModel.selectAllIcsCalendars(selectAll) },
+                        onSetExportFormat = { format -> viewModel.setIcsExportFormat(format) },
+                        onSetExportAsZip = { asZip -> viewModel.setIcsExportAsZip(asZip) },
+                        onSetDateWindow = { past, future -> viewModel.setIcsDateWindow(past, future) },
+                        onExportToFolder = { treeUri -> viewModel.executeIcsExportToFolder(treeUri) },
+                        onExportToZip = { zipUri -> viewModel.executeIcsExportToZip(zipUri) },
+                        onDismissExportResult = { viewModel.dismissIcsExportResult() },
+                        onPickImportFile = { fileUri, fileName -> viewModel.inspectIcsImportFile(fileUri, fileName) },
+                        onSelectImportTargetCalendar = { calendar -> viewModel.selectIcsImportTargetCalendar(calendar) },
+                        onExecuteImport = { viewModel.executeIcsImport() },
+                        onDismissImportResult = { viewModel.dismissIcsImportResult() }
                     )
                 }
             }

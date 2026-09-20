@@ -39,6 +39,7 @@ fun OneTimeOperationsScreen(
     uiState: MainUiState,
     onOpenDeleteScreen: () -> Unit = {},
     onOpenCopyScreen: () -> Unit = {},
+    onOpenIcsScreen: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -103,6 +104,24 @@ fun OneTimeOperationsScreen(
                 onActionClick = onOpenCopyScreen
             )
 
+            OneTimeFeatureCard(
+                title = "ICS & CSV Import & Export",
+                badge = "AVAILABLE",
+                badgeColor = TitaniumMint.Mint400,
+                badgeBg = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Mint500.copy(alpha = 0.35f),
+                description = "Export any calendars to standard .ics or .csv files into a folder or ZIP archive, or import external .ics files with duplicate skipping.",
+                icon = Icons.Default.ImportExport,
+                iconColor = TitaniumMint.Mint400,
+                features = listOf(
+                    "Multi-calendar export into individual files per calendar (down to the second)",
+                    "Direct folder tree or packaged ZIP archive with export manifest",
+                    "Safe import with CalCloner tag tracking and automatic duplicate skipping"
+                ),
+                actionButtonText = "Open Import & Export Tool",
+                onActionClick = onOpenIcsScreen
+            )
+
             // ── Coming Soon Features ──────────────────────────────────────────────
 
             OneTimeFeatureCard(
@@ -118,22 +137,6 @@ fun OneTimeOperationsScreen(
                     "Regex & substring keyword matching across title and description",
                     "Filter by RSVP status (e.g. purge only declined invitations)",
                     "Safe dry-run preview showing exactly how many events match"
-                )
-            )
-
-            OneTimeFeatureCard(
-                title = "ICS File Import & Export",
-                badge = "COMING SOON",
-                badgeColor = TitaniumMint.Amber400,
-                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
-                description = "Export any calendar to a standard .ics iCalendar file for backup or cross-app sharing, or import external .ics calendar files directly.",
-                icon = Icons.Default.ImportExport,
-                iconColor = TitaniumMint.Mint400,
-                features = listOf(
-                    "Export full calendar or filtered date ranges to .ics",
-                    "Import .ics event files into any writable Android calendar",
-                    "Conflict detection and duplicate prevention on import"
                 )
             )
 

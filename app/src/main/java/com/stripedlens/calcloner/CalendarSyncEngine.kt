@@ -1,9 +1,14 @@
 package com.stripedlens.calcloner
 
 import android.content.Context
+import android.net.Uri
+import com.stripedlens.calcloner.domain.ics.ExportFormat
 import com.stripedlens.calcloner.engine.CalendarEventWriter
+import com.stripedlens.calcloner.engine.CalendarIcsManager
 import com.stripedlens.calcloner.engine.CalendarMaintenance
 import com.stripedlens.calcloner.engine.CalendarProviderReader
+import com.stripedlens.calcloner.engine.IcsExportResult
+import com.stripedlens.calcloner.engine.IcsImportResult
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -401,6 +406,66 @@ object CalendarSyncEngine {
             daysPast = daysPast,
             daysFuture = daysFuture,
             filterUiState = filterUiState,
+            onProgress = onProgress,
+            onSelfWrite = { recordSelfWrite() }
+        )
+    }
+
+    suspend fun exportCalendarsToFolder(
+        context: Context,
+        calendarIds: List<Long>,
+        format: ExportFormat = ExportFormat.ICS,
+        daysPast: Int = 30,
+        daysFuture: Int = 90,
+        folderUri: Uri,
+        onProgress: ((current: Int, total: Int, calendarName: String) -> Unit)? = null
+    ): IcsExportResult = syncMutex.withLock {
+        CalendarIcsManager.exportCalendarsToFolder(
+            context = context,
+            calendarIds = calendarIds,
+            format = format,
+            daysPast = daysPast,
+            daysFuture = daysFuture,
+            folderUri = folderUri,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun exportCalendarsToZip(
+        context: Context,
+        calendarIds: List<Long>,
+        format: ExportFormat = ExportFormat.ICS,
+        daysPast: Int = 30,
+        daysFuture: Int = 90,
+        zipUri: Uri,
+        onProgress: ((current: Int, total: Int, calendarName: String) -> Unit)? = null
+    ): IcsExportResult = syncMutex.withLock {
+        CalendarIcsManager.exportCalendarsToZip(
+            context = context,
+            calendarIds = calendarIds,
+            format = format,
+            daysPast = daysPast,
+            daysFuture = daysFuture,
+            zipUri = zipUri,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun inspectIcsFile(
+        context: Context,
+        fileUri: Uri
+    ): List<SyncEvent> = CalendarIcsManager.inspectIcsFile(context, fileUri)
+
+    suspend fun importIcsEvents(
+        context: Context,
+        targetCalendarId: Long,
+        events: List<SyncEvent>,
+        onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
+    ): IcsImportResult = syncMutex.withLock {
+        CalendarIcsManager.importIcsEvents(
+            context = context,
+            targetCalendarId = targetCalendarId,
+            events = events,
             onProgress = onProgress,
             onSelfWrite = { recordSelfWrite() }
         )

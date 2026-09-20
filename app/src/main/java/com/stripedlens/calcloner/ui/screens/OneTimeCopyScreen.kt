@@ -392,109 +392,13 @@ fun OneTimeCopyScreen(
             }
 
             // ── 3. Date Window Selector ───────────────────────────────────────
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "EVENT DATE WINDOW",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TitaniumMint.Mint400
-                        )
-                        Text(
-                            text = "-${uiState.oneTimeDaysPast}d past / +${uiState.oneTimeDaysFuture}d future",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            color = TitaniumMint.Mint400,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Preset Quick-Select Pills
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val is30d = uiState.oneTimeDaysPast == 7 && uiState.oneTimeDaysFuture == 30
-                        val is90d = uiState.oneTimeDaysPast == 14 && uiState.oneTimeDaysFuture == 90
-                        val is1y = uiState.oneTimeDaysPast == 30 && uiState.oneTimeDaysFuture == 365
-                        val isAll = uiState.oneTimeDaysPast == 365 && uiState.oneTimeDaysFuture == 365
-
-                        PresetChip(
-                            label = "30 Days",
-                            selected = is30d,
-                            onClick = { onDateWindowChanged(7, 30) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "90 Days",
-                            selected = is90d,
-                            onClick = { onDateWindowChanged(14, 90) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "1 Year",
-                            selected = is1y,
-                            onClick = { onDateWindowChanged(30, 365) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PresetChip(
-                            label = "Full Range",
-                            selected = isAll,
-                            onClick = { onDateWindowChanged(365, 365) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Fine-grained sliders
-                    Text(
-                        text = "Days in the past: ${uiState.oneTimeDaysPast} days",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Slider(
-                        value = uiState.oneTimeDaysPast.toFloat(),
-                        onValueChange = { onDateWindowChanged(it.toInt(), uiState.oneTimeDaysFuture) },
-                        valueRange = 0f..365f,
-                        steps = 72,
-                        colors = SliderDefaults.colors(
-                            thumbColor = TitaniumMint.Mint400,
-                            activeTrackColor = TitaniumMint.Mint500
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Days in the future: ${uiState.oneTimeDaysFuture} days",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Slider(
-                        value = uiState.oneTimeDaysFuture.toFloat(),
-                        onValueChange = { onDateWindowChanged(uiState.oneTimeDaysPast, it.toInt()) },
-                        valueRange = 1f..365f,
-                        steps = 72,
-                        colors = SliderDefaults.colors(
-                            thumbColor = TitaniumMint.Mint400,
-                            activeTrackColor = TitaniumMint.Mint500
-                        )
-                    )
-                }
-            }
+            com.stripedlens.calcloner.ui.components.UnifiedDateRangeCard(
+                daysPast = uiState.oneTimeDaysPast,
+                daysFuture = uiState.oneTimeDaysFuture,
+                onRangeChanged = { past, future -> onDateWindowChanged(past, future) },
+                title = "EVENT DATE WINDOW",
+                description = "Define date boundaries for one-time copying."
+            )
 
             // ── 4. Strict Safety Guarantee Banner ─────────────────────────────
             Surface(
@@ -694,34 +598,3 @@ fun OneTimeCopyScreen(
     }
 }
 
-@Composable
-private fun PresetChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) TitaniumMint.Mint500.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) TitaniumMint.Mint500 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        ),
-        modifier = modifier
-            .height(34.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}

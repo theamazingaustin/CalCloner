@@ -1,14 +1,20 @@
 package com.stripedlens.calcloner.viewmodel
 
+import android.net.Uri
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.OneTimeCopyResult
+import com.stripedlens.calcloner.SyncEvent
 import com.stripedlens.calcloner.SyncPair
+import com.stripedlens.calcloner.domain.ics.ExportFormat
+import com.stripedlens.calcloner.engine.IcsExportResult
+import com.stripedlens.calcloner.engine.IcsImportResult
 
 enum class AppTab {
     SYNC,
     ONE_TIME,
     DELETE,
-    ONE_TIME_COPY
+    ONE_TIME_COPY,
+    ONE_TIME_ICS
 }
 
 enum class DeleteOperationType {
@@ -72,6 +78,21 @@ data class MainUiState(
     val oneTimeIsCopying: Boolean = false,
     val oneTimeCopyProgress: String? = null,
     val oneTimeCopyResult: OneTimeCopyResult? = null,
+
+    // One-Time ICS / CSV Calendar Import & Export State
+    val icsExportFormat: ExportFormat = ExportFormat.ICS,
+    val icsExportAsZip: Boolean = false,
+    val icsSelectedCalendarIds: Set<Long> = emptySet(),
+    val icsDaysPast: Int = 30,
+    val icsDaysFuture: Int = 90,
+    val icsIsOperating: Boolean = false,
+    val icsProgressText: String? = null,
+    val icsExportResult: IcsExportResult? = null,
+    val icsImportTargetCalendar: CalendarInfo? = null,
+    val icsImportParsedEvents: List<SyncEvent>? = null,
+    val icsImportFileUri: Uri? = null,
+    val icsImportFileName: String? = null,
+    val icsImportResult: IcsImportResult? = null,
 
     // One-shot User Feedback Toasts/Messages
     val userToastMessage: String? = null

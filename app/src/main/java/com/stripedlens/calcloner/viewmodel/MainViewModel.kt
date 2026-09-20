@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.stripedlens.calcloner.BuildConfig
+import com.stripedlens.calcloner.domain.ics.ExportFormat
 import com.stripedlens.calcloner.util.AppUpdateManager
 import java.io.File
 import java.text.SimpleDateFormat
@@ -112,7 +113,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val calendars = CalendarSyncEngine.getAvailableCalendars(context)
-                _uiState.update { it.copy(availableCalendars = calendars) }
+                _uiState.update { current ->
+                    val selectedIds = if (current.icsSelectedCalendarIds.isEmpty()) {
+                        calendars.map { it.id }.toSet()
+                    } else {
+                        current.icsSelectedCalendarIds
+                    }
+                    current.copy(
+                        availableCalendars = calendars,
+                        icsSelectedCalendarIds = selectedIds
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(userToastMessage = "Failed to load calendars: ${e.message}") }
             }
@@ -840,6 +851,242 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // One-Time ICS / CSV Import & Export Actions
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fun toggleIcsCalendarSelected(calendarId: Long, isSelected: Boolean) {
+        _uiState.update { current ->
+            val updated = if (isSelected) {
+                current.icsSelectedCalendarIds + calendarId
+            } else {
+                current.icsSelectedCalendarIds - calendarId
+            }
+            current.copy(icsSelectedCalendarIds = updated)
+        }
+    }
+
+    fun selectAllIcsCalendars(selectAll: Boolean) {
+        _uiState.update { current ->
+            val updated = if (selectAll) {
+                current.availableCalendars.map { it.id }.toSet()
+            } else {
+                emptySet()
+            }
+            current.copy(icsSelectedCalendarIds = updated)
+        }
+    }
+
+    fun setIcsExportFormat(format: ExportFormat) {
+        _uiState.update { it.copy(icsExportFormat = format) }
+    }
+
+    fun setIcsExportAsZip(asZip: Boolean) {
+        _uiState.update { it.copy(icsExportAsZip = asZip) }
+    }
+
+    fun setIcsDateWindow(daysPast: Int, daysFuture: Int) {
+        _uiState.update {
+            it.copy(
+                icsDaysPast = daysPast,
+                icsDaysFuture = daysFuture
+            )
+        }
+    }
+
+    fun executeIcsExportToFolder(folderUri: Uri) {
+        val selectedIds = _uiState.value.icsSelectedCalendarIds.toList()
+        if (selectedIds.isEmpty()) {
+            _uiState.update { it.copy(userToastMessage = "Please select at least one calendar to export") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    icsIsOperating = true,
+                    icsProgressText = "Preparing folder export...",
+                    icsExportResult = null
+                )
+            }
+
+            try {
+                val result = CalendarSyncEngine.exportCalendarsToFolder(
+                    context = getApplication(),
+                    calendarIds = selectedIds,
+                    format = _uiState.value.icsExportFormat,
+                    daysPast = _uiState.value.icsDaysPast,
+                    daysFuture = _uiState.value.icsDaysFuture,
+                    folderUri = folderUri,
+                    onProgress = { cur, tot, calName ->
+                        _uiState.update { it.copy(icsProgressText = "Exporting $cur of $tot: $calName") }
+                    }
+                )
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        icsExportResult = result
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        userToastMessage = "Export failed: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun executeIcsExportToZip(zipUri: Uri) {
+        val selectedIds = _uiState.value.icsSelectedCalendarIds.toList()
+        if (selectedIds.isEmpty()) {
+            _uiState.update { it.copy(userToastMessage = "Please select at least one calendar to export") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    icsIsOperating = true,
+                    icsProgressText = "Packaging calendar export ZIP...",
+                    icsExportResult = null
+                )
+            }
+
+            try {
+                val result = CalendarSyncEngine.exportCalendarsToZip(
+                    context = getApplication(),
+                    calendarIds = selectedIds,
+                    format = _uiState.value.icsExportFormat,
+                    daysPast = _uiState.value.icsDaysPast,
+                    daysFuture = _uiState.value.icsDaysFuture,
+                    zipUri = zipUri,
+                    onProgress = { cur, tot, calName ->
+                        _uiState.update { it.copy(icsProgressText = "Archiving $cur of $tot: $calName") }
+                    }
+                )
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        icsExportResult = result
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        userToastMessage = "ZIP export failed: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissIcsExportResult() {
+        _uiState.update { it.copy(icsExportResult = null) }
+    }
+
+    fun inspectIcsImportFile(fileUri: Uri, fileName: String) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    icsIsOperating = true,
+                    icsProgressText = "Reading and parsing $fileName...",
+                    icsImportFileUri = fileUri,
+                    icsImportFileName = fileName,
+                    icsImportParsedEvents = null,
+                    icsImportResult = null
+                )
+            }
+
+            try {
+                val parsedEvents = CalendarSyncEngine.inspectIcsFile(getApplication(), fileUri)
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        icsImportParsedEvents = parsedEvents
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        icsImportParsedEvents = null,
+                        userToastMessage = "Failed to parse calendar file: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectIcsImportTargetCalendar(calendar: CalendarInfo?) {
+        _uiState.update { it.copy(icsImportTargetCalendar = calendar) }
+    }
+
+    fun executeIcsImport() {
+        val target = _uiState.value.icsImportTargetCalendar ?: run {
+            _uiState.update { it.copy(userToastMessage = "Please select a target calendar for import") }
+            return
+        }
+        val events = _uiState.value.icsImportParsedEvents ?: run {
+            _uiState.update { it.copy(userToastMessage = "No parsed events found to import") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    icsIsOperating = true,
+                    icsProgressText = "Starting calendar import...",
+                    icsImportResult = null
+                )
+            }
+
+            try {
+                val result = CalendarSyncEngine.importIcsEvents(
+                    context = getApplication(),
+                    targetCalendarId = target.id,
+                    events = events,
+                    onProgress = { cur, tot, msg ->
+                        _uiState.update { it.copy(icsProgressText = "[$cur/$tot] $msg") }
+                    }
+                )
+
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        icsImportResult = result,
+                        icsImportParsedEvents = null,
+                        icsImportFileUri = null,
+                        icsImportFileName = null
+                    )
+                }
+                refreshCalendars()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        icsIsOperating = false,
+                        icsProgressText = null,
+                        userToastMessage = "Import failed: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissIcsImportResult() {
+        _uiState.update { it.copy(icsImportResult = null) }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

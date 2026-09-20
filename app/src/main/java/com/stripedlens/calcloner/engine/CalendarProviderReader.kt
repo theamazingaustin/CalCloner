@@ -131,6 +131,7 @@ object CalendarProviderReader {
             CalendarContract.Events.STATUS,
             CalendarContract.Events._SYNC_ID,
             CalendarContract.Events.AVAILABILITY,
+            CalendarContract.Events.ACCESS_LEVEL,
             CalendarContract.Events.EXDATE
         )
 
@@ -171,6 +172,7 @@ object CalendarProviderReader {
             val statusCol = it.getColumnIndex(CalendarContract.Events.STATUS)
             val syncIdCol = it.getColumnIndex(CalendarContract.Events._SYNC_ID)
             val availCol = it.getColumnIndex(CalendarContract.Events.AVAILABILITY)
+            val accessCol = it.getColumnIndex(CalendarContract.Events.ACCESS_LEVEL)
             val exdateCol = it.getColumnIndex(CalendarContract.Events.EXDATE)
 
             while (it.moveToNext()) {
@@ -182,6 +184,7 @@ object CalendarProviderReader {
                 val status = if (statusCol != -1 && !it.isNull(statusCol)) it.getInt(statusCol) else null
                 val syncId = if (syncIdCol != -1 && !it.isNull(syncIdCol)) it.getString(syncIdCol) else null
                 val availability = if (availCol != -1 && !it.isNull(availCol)) it.getInt(availCol) else null
+                val accessLevel = if (accessCol != -1 && !it.isNull(accessCol)) it.getInt(accessCol) else null
                 val exdate = if (exdateCol != -1 && !it.isNull(exdateCol)) it.getString(exdateCol) else null
 
                 val isRecurring = !rrule.isNullOrEmpty()
@@ -208,6 +211,7 @@ object CalendarProviderReader {
                         status = status,
                         syncId = syncId,
                         availability = availability,
+                        accessLevel = accessLevel,
                         exdate = exdate
                     )
                 )

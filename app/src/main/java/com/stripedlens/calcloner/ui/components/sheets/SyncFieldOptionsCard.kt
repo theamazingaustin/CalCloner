@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -242,6 +243,10 @@ fun SyncFieldOptionsCard(
     onSyncStatusChange: (Boolean) -> Unit,
     customStatus: Int? = null,
     onCustomStatusChange: (Int?) -> Unit = {},
+    syncAccessLevel: Boolean = true,
+    onSyncAccessLevelChange: (Boolean) -> Unit = {},
+    customAccessLevel: Int? = null,
+    onCustomAccessLevelChange: (Int?) -> Unit = {},
     syncAttendees: Boolean = false,
     onSyncAttendeesChange: (Boolean) -> Unit = {},
     attendeesPlacement: String = "END",
@@ -258,6 +263,7 @@ fun SyncFieldOptionsCard(
     var attendeesExpanded by remember { mutableStateOf(false) }
     var locationExpanded by remember { mutableStateOf(false) }
     var statusExpanded by remember { mutableStateOf(false) }
+    var accessLevelExpanded by remember { mutableStateOf(false) }
 
     // Real-time validation: Title is required if mirroring is turned off
     val isTitleInvalid = !syncTitle && customTitle.isBlank()
@@ -420,7 +426,7 @@ fun SyncFieldOptionsCard(
                             OutlinedTextField(
                                 value = titlePrefix,
                                 onValueChange = onTitlePrefixChange,
-                                label = { Text("Prepend Prefix", fontSize = 12.sp) },
+                                label = { Text("Prepend Prefix (Optional)", fontSize = 12.sp) },
                                 placeholder = { Text("e.g. [Personal] ", fontSize = 12.sp) },
                                 singleLine = true,
                                 shape = RoundedCornerShape(8.dp),
@@ -433,7 +439,7 @@ fun SyncFieldOptionsCard(
                             OutlinedTextField(
                                 value = titleSuffix,
                                 onValueChange = onTitleSuffixChange,
-                                label = { Text("Append Suffix", fontSize = 12.sp) },
+                                label = { Text("Append Suffix (Optional)", fontSize = 12.sp) },
                                 placeholder = { Text("e.g. (Synced)", fontSize = 12.sp) },
                                 singleLine = true,
                                 shape = RoundedCornerShape(8.dp),
@@ -498,7 +504,7 @@ fun SyncFieldOptionsCard(
                             OutlinedTextField(
                                 value = descriptionPrefix,
                                 onValueChange = onDescriptionPrefixChange,
-                                label = { Text("Prepend Note", fontSize = 12.sp) },
+                                label = { Text("Prepend Note (Optional)", fontSize = 12.sp) },
                                 placeholder = { Text("e.g. Synced from personal calendar", fontSize = 12.sp) },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -510,7 +516,7 @@ fun SyncFieldOptionsCard(
                             OutlinedTextField(
                                 value = descriptionSuffix,
                                 onValueChange = onDescriptionSuffixChange,
-                                label = { Text("Append Note", fontSize = 12.sp) },
+                                label = { Text("Append Note (Optional)", fontSize = 12.sp) },
                                 placeholder = { Text("e.g. Confidential schedule item", fontSize = 12.sp) },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -723,7 +729,7 @@ fun SyncFieldOptionsCard(
                     // 5. LOCATION ACCORDION
                     FieldAccordionRow(
                         title = "Location",
-                        subtitle = if (syncLocation) "Mirror event address or video links" else "Fixed location or omit",
+                        subtitle = if (syncLocation) "Mirror event address or video links" else "Manual location or omit",
                         icon = Icons.Default.LocationOn,
                         checked = syncLocation,
                         isExpanded = locationExpanded,
@@ -736,7 +742,7 @@ fun SyncFieldOptionsCard(
                         OutlinedTextField(
                             value = customLocation,
                             onValueChange = onCustomLocationChange,
-                            label = { Text("Fixed Location (Optional)", fontSize = 12.sp) },
+                            label = { Text("Manual Location (Optional)", fontSize = 12.sp) },
                             placeholder = { Text("e.g. Remote / Teleconference", fontSize = 12.sp) },
                             singleLine = true,
                             shape = RoundedCornerShape(8.dp),
@@ -846,7 +852,103 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 7. REMINDERS & NOTIFICATIONS (Last Option)
+                    // 7. ACCESS LEVEL / VISIBILITY ACCORDION
+                    FieldAccordionRow(
+                        title = "Access Level / Visibility",
+                        subtitle = if (syncAccessLevel) "Mirror source visibility" else "Fixed visibility override",
+                        icon = Icons.Default.Visibility,
+                        checked = syncAccessLevel,
+                        isExpanded = accessLevelExpanded,
+                        onExpandToggle = { accessLevelExpanded = !accessLevelExpanded },
+                        hasSubOptions = true,
+                        subOptionsEnabled = !syncAccessLevel,
+                        accentColor = accentColor,
+                        onCheckedChange = onSyncAccessLevelChange
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Choose visibility on target calendar:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val effectiveAccess = customAccessLevel ?: CalendarContract.Events.ACCESS_PRIVATE
+                                val isPublic = effectiveAccess == CalendarContract.Events.ACCESS_PUBLIC
+                                val isPrivate = effectiveAccess == CalendarContract.Events.ACCESS_PRIVATE
+                                val isConfidential = effectiveAccess == CalendarContract.Events.ACCESS_CONFIDENTIAL
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isPublic) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isPublic) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PUBLIC) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Public",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isPublic) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isPublic) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isPrivate) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isPrivate) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_PRIVATE) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Private",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isPrivate) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isPrivate) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isConfidential) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isConfidential) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAccessLevelChange(CalendarContract.Events.ACCESS_CONFIDENTIAL) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Confidential",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isConfidential) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isConfidential) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
+
+                    // 8. REMINDERS & NOTIFICATIONS (Last Option)
                     FieldAccordionRow(
                         title = "Reminders & Notifications",
                         subtitle = "Mirror alarms, alert popups, and advance notifications",

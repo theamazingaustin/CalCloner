@@ -101,6 +101,8 @@ fun AddEditSyncPairSheet(
     var customAvailability by remember { mutableStateOf(pairToEdit?.customAvailability) }
     var syncStatus by remember { mutableStateOf(pairToEdit?.syncStatus ?: true) }
     var customStatus by remember { mutableStateOf(pairToEdit?.customStatus) }
+    var syncAccessLevel by remember { mutableStateOf(pairToEdit?.syncAccessLevel ?: true) }
+    var customAccessLevel by remember { mutableStateOf(pairToEdit?.customAccessLevel) }
     var syncAttendees by remember { mutableStateOf(pairToEdit?.syncAttendees ?: false) }
     var attendeesPlacement by remember { mutableStateOf(pairToEdit?.attendeesPlacement ?: "END") }
 
@@ -116,7 +118,8 @@ fun AddEditSyncPairSheet(
         daysPast, daysFuture, syncTitle, customTitle, titlePrefix, titleSuffix,
         syncDescription, customDescription, descriptionPrefix, descriptionSuffix,
         syncLocation, customLocation, syncReminders, syncAvailability,
-        customAvailability, syncStatus, customStatus, syncAttendees, attendeesPlacement, pairToEdit
+        customAvailability, syncStatus, customStatus, syncAccessLevel, customAccessLevel,
+        syncAttendees, attendeesPlacement, pairToEdit
     ) {
         if (pairToEdit != null) {
             nickname != (pairToEdit.nickname ?: "") ||
@@ -140,6 +143,8 @@ fun AddEditSyncPairSheet(
             customAvailability != pairToEdit.customAvailability ||
             syncStatus != pairToEdit.syncStatus ||
             customStatus != pairToEdit.customStatus ||
+            syncAccessLevel != pairToEdit.syncAccessLevel ||
+            customAccessLevel != pairToEdit.customAccessLevel ||
             syncAttendees != pairToEdit.syncAttendees ||
             attendeesPlacement != pairToEdit.attendeesPlacement
         } else {
@@ -163,6 +168,8 @@ fun AddEditSyncPairSheet(
             customAvailability != null ||
             !syncStatus ||
             customStatus != null ||
+            !syncAccessLevel ||
+            customAccessLevel != null ||
             syncAttendees ||
             attendeesPlacement != "END"
         }
@@ -400,6 +407,8 @@ fun AddEditSyncPairSheet(
             customAvailability = if (!syncAvailability) customAvailability else null,
             syncStatus = syncStatus,
             customStatus = if (!syncStatus) customStatus else null,
+            syncAccessLevel = syncAccessLevel,
+            customAccessLevel = if (!syncAccessLevel) customAccessLevel else null,
             syncAttendees = syncAttendees,
             attendeesPlacement = attendeesPlacement
         )
@@ -784,6 +793,10 @@ fun AddEditSyncPairSheet(
                         onSyncStatusChange = { syncStatus = it },
                         customStatus = customStatus,
                         onCustomStatusChange = { customStatus = it },
+                        syncAccessLevel = syncAccessLevel,
+                        onSyncAccessLevelChange = { syncAccessLevel = it },
+                        customAccessLevel = customAccessLevel,
+                        onCustomAccessLevelChange = { customAccessLevel = it },
                         syncAttendees = syncAttendees,
                         onSyncAttendeesChange = { syncAttendees = it },
                         attendeesPlacement = attendeesPlacement,

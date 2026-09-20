@@ -40,6 +40,7 @@ data class SyncEvent(
     val reminders: List<SyncReminder> = emptyList(),
     val syncId: String? = null,
     val availability: Int? = null,
+    val accessLevel: Int? = null,
     val exdate: String? = null,
     val attendees: List<SyncAttendee> = emptyList()
 )
@@ -77,6 +78,8 @@ data class SyncPair(
     val customAvailability: Int? = null,
     val syncStatus: Boolean = true,
     val customStatus: Int? = null,
+    val syncAccessLevel: Boolean = true,
+    val customAccessLevel: Int? = null,
     val syncAttendees: Boolean = false,
     val attendeesPlacement: String = "END",
     val lastSyncTime: Long? = null,
@@ -131,6 +134,8 @@ data class SyncPair(
         if (customAvailability != null) put("customAvailability", customAvailability)
         put("syncStatus", syncStatus)
         if (customStatus != null) put("customStatus", customStatus)
+        put("syncAccessLevel", syncAccessLevel)
+        if (customAccessLevel != null) put("customAccessLevel", customAccessLevel)
         put("syncAttendees", syncAttendees)
         put("attendeesPlacement", attendeesPlacement)
         if (lastSyncTime != null) put("lastSyncTime", lastSyncTime)
@@ -166,6 +171,8 @@ data class SyncPair(
             customAvailability: Int? = null,
             syncStatus: Boolean = true,
             customStatus: Int? = null,
+            syncAccessLevel: Boolean = true,
+            customAccessLevel: Int? = null,
             syncAttendees: Boolean = false,
             attendeesPlacement: String = "END"
         ): SyncPair = SyncPair(
@@ -193,6 +200,8 @@ data class SyncPair(
             customAvailability = customAvailability,
             syncStatus = syncStatus,
             customStatus = customStatus,
+            syncAccessLevel = syncAccessLevel,
+            customAccessLevel = customAccessLevel,
             syncAttendees = syncAttendees,
             attendeesPlacement = attendeesPlacement
         )
@@ -222,6 +231,8 @@ data class SyncPair(
             customAvailability = if (json.has("customAvailability") && !json.isNull("customAvailability")) json.getInt("customAvailability") else null,
             syncStatus = json.optBoolean("syncStatus", true),
             customStatus = if (json.has("customStatus") && !json.isNull("customStatus")) json.getInt("customStatus") else null,
+            syncAccessLevel = json.optBoolean("syncAccessLevel", true),
+            customAccessLevel = if (json.has("customAccessLevel") && !json.isNull("customAccessLevel")) json.getInt("customAccessLevel") else null,
             syncAttendees = json.optBoolean("syncAttendees", false),
             attendeesPlacement = json.optString("attendeesPlacement", "END"),
             lastSyncTime = if (json.has("lastSyncTime") && !json.isNull("lastSyncTime")) json.getLong("lastSyncTime") else null,

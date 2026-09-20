@@ -184,7 +184,9 @@ class SyncPairTest {
             syncAvailability = false,
             customAvailability = 1, // AVAILABILITY_BUSY
             syncStatus = false,
-            customStatus = 0 // STATUS_TENTATIVE
+            customStatus = 0, // STATUS_TENTATIVE
+            syncAccessLevel = false,
+            customAccessLevel = 2 // ACCESS_PRIVATE
         )
 
         val json = pair.toJson().toString()
@@ -205,6 +207,8 @@ class SyncPairTest {
         assertEquals(1, restored.customAvailability)
         assertFalse(restored.syncStatus)
         assertEquals(0, restored.customStatus)
+        assertFalse(restored.syncAccessLevel)
+        assertEquals(2, restored.customAccessLevel)
     }
 
     @Test

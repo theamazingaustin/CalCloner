@@ -217,6 +217,8 @@ object CalendarEventWriter {
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
         customStatus: Int? = null,
+        syncAccessLevel: Boolean = true,
+        customAccessLevel: Int? = null,
         syncAttendees: Boolean = false,
         attendeesPlacement: String = "END"
     ): ContentValues {
@@ -361,6 +363,15 @@ object CalendarEventWriter {
                     putNull(CalendarContract.Events.AVAILABILITY)
                 }
             }
+
+            if (syncAccessLevel) {
+                val eventAccess = event.accessLevel ?: CalendarContract.Events.ACCESS_DEFAULT
+                put(CalendarContract.Events.ACCESS_LEVEL, eventAccess)
+            } else {
+                val accessToSet = customAccessLevel ?: CalendarContract.Events.ACCESS_DEFAULT
+                put(CalendarContract.Events.ACCESS_LEVEL, accessToSet)
+            }
+
             put(CalendarContract.Events.HAS_ALARM, if (event.reminders.isNotEmpty()) 1 else 0)
             put(CalendarContract.Events.CUSTOM_APP_PACKAGE, context.packageName)
             val fullAppUri = if (pairId != null) "${uriPrefix}${pairId}/${event.id}" else "$uriPrefix${event.id}"
@@ -404,6 +415,8 @@ object CalendarEventWriter {
         customAvailability: Int? = null,
         syncStatus: Boolean = true,
         customStatus: Int? = null,
+        syncAccessLevel: Boolean = true,
+        customAccessLevel: Int? = null,
         syncAttendees: Boolean = false,
         attendeesPlacement: String = "END",
         activePairIds: Set<String> = emptySet(),
@@ -674,6 +687,8 @@ object CalendarEventWriter {
                 customAvailability = customAvailability,
                 syncStatus = syncStatus,
                 customStatus = customStatus,
+                syncAccessLevel = syncAccessLevel,
+                customAccessLevel = customAccessLevel,
                 syncAttendees = syncAttendees,
                 attendeesPlacement = attendeesPlacement
             )

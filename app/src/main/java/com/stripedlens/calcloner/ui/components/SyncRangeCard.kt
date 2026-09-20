@@ -1,6 +1,11 @@
 package com.stripedlens.calcloner.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,10 +16,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -127,6 +135,8 @@ fun SyncRangeCard(
         onDaysFutureChange(computedDays)
     }
 
+    var isExpanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -144,75 +154,89 @@ fun SyncRangeCard(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Header
-                Column {
-                    Text(
-                        text = "Sync Range",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Define synchronization boundaries.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Side-by-Side: Past Sync & Future Sync Controls
+                // Clickable Header with Expand/Collapse and Range Badge when collapsed
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isExpanded = !isExpanded },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        SyncBoundaryControl(
-                            title = "Past Sync",
-                            subtitle = "How far back",
-                            numberString = pastNumberString,
-                            unit = pastUnit,
-                            isClockwise = false,
-                            onNumberChange = { updatePastNumber(it) },
-                            onUnitChange = { updatePastUnit(it) }
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = "Sync Range",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+                        if (isExpanded) {
+                            Text(
+                                text = "Define synchronization boundaries. Events outside this rolling window are automatically pruned from the target calendar.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                text = "Past $pastNumberString ${pastUnit.label}  •  Future $futureNumberString ${futureUnit.label}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TitaniumMint.Mint400
+                            )
+                        }
                     }
-                    Box(modifier = Modifier.weight(1f)) {
-                        SyncBoundaryControl(
-                            title = "Future Sync",
-                            subtitle = "How far forward",
-                            numberString = futureNumberString,
-                            unit = futureUnit,
-                            isClockwise = true,
-                            onNumberChange = { updateFutureNumber(it) },
-                            onUnitChange = { updateFutureUnit(it) }
-                        )
-                    }
-                }
 
-                // Info Banner
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.background,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    IconButton(
+                        onClick = { isExpanded = !isExpanded },
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = TitaniumMint.Mint400,
-                            modifier = Modifier.size(16.dp)
+                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Collapse Sync Range" else "Expand Sync Range",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = "Events outside this rolling window are automatically pruned from the target calendar.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.5.sp,
-                            lineHeight = 16.sp
-                        )
+                    }
+                }
+
+                // Expandable Range Controls
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Side-by-Side: Past Sync & Future Sync Controls
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                SyncBoundaryControl(
+                                    title = "Past Sync",
+                                    subtitle = "How far back",
+                                    numberString = pastNumberString,
+                                    unit = pastUnit,
+                                    isClockwise = false,
+                                    onNumberChange = { updatePastNumber(it) },
+                                    onUnitChange = { updatePastUnit(it) }
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                SyncBoundaryControl(
+                                    title = "Future Sync",
+                                    subtitle = "How far forward",
+                                    numberString = futureNumberString,
+                                    unit = futureUnit,
+                                    isClockwise = true,
+                                    onNumberChange = { updateFutureNumber(it) },
+                                    onUnitChange = { updateFutureUnit(it) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -443,7 +467,7 @@ fun CombinedSyncTelemetryCard(
                     color = TitaniumMint.Mint400
                 )
                 Text(
-                    text = "Synced Events",
+                    text = "Events",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp

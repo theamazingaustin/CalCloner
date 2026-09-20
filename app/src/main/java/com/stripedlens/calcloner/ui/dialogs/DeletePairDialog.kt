@@ -159,7 +159,7 @@ fun DeletePairDialog(
                                 color = if (deleteClonedChoice == false) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Leave previously created events intact on the clone calendar.",
+                                text = "Leave previously created events intact on the clone calendar. Cloned events can also be deleted later via the delete options on the One-Time Actions screen.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp

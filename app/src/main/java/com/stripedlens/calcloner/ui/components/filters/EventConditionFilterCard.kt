@@ -83,6 +83,7 @@ data class EventFilterUiState(
     val rsvpTentative: Boolean = false,
     val rsvpDeclined: Boolean = false,
     // Schedule
+    val includeAllDayEvents: Boolean = true,
     val enableTimeFilter: Boolean = false,
     val fromHour: Int = 9,
     val fromMinute: Int = 0,
@@ -147,6 +148,7 @@ data class EventFilterUiState(
             var count = 0
             if (!allowFree || !allowBusy || allowTentative) count++
             if (!rsvpAccepted || rsvpTentative || rsvpDeclined) count++
+            if (!includeAllDayEvents) count++
             if (enableTimeFilter) count++
             if (activeDays.size < 7) count++
             if (titleContains.isNotBlank()) count++
@@ -168,7 +170,8 @@ private data class MockSampleEvent(
     val timeSlot: String,
     val isBusy: Boolean,
     val rsvpStatus: String, // "Accepted", "Tentative", "Declined"
-    val dayOfWeek: Int // 1=Mon .. 7=Sun
+    val dayOfWeek: Int, // 1=Mon .. 7=Sun
+    val isAllDay: Boolean = false
 )
 
 /**
@@ -248,8 +251,13 @@ fun EventConditionFilterCard(
             // Check Days
             if (!state.activeDays.contains(event.dayOfWeek)) reasons.add("Day of week filtered out")
 
-            // Check Time Window
-            if (state.enableTimeFilter) {
+            // Check All-Day Events
+            if (event.isAllDay && !state.includeAllDayEvents) {
+                reasons.add("All-day events excluded")
+            }
+
+            // Check Time Window (Timed events only; all-day events bypass hour window if included)
+            if (state.enableTimeFilter && !event.isAllDay) {
                 val eventMins = event.startHour * 60 + event.startMinute
                 val fromMins = state.fromHour * 60 + state.fromMinute
                 val toMins = state.toHour * 60 + state.toMinute
@@ -578,6 +586,33 @@ fun EventConditionFilterCard(
                         title = "Active Schedule Window & Days"
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Include All-Day Events Checkbox (selected by default)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { updateState { it.copy(includeAllDayEvents = !it.includeAllDayEvents) } },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Include All-Day Events", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = if (state.includeAllDayEvents) "All-day and multi-day events will be synced" else "Skip all-day and multi-day events",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Checkbox(
+                                    checked = state.includeAllDayEvents,
+                                    onCheckedChange = { updateState { s -> s.copy(includeAllDayEvents = it) } }
+                                )
+                            }
+
+                            Divider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                thickness = 0.5.dp
+                            )
+
                             // Enable Time Window Toggle
                             Row(
                                 modifier = Modifier
@@ -1178,90 +1213,107 @@ private fun KeywordInputField(
         }
     }
 
+    var showModeTooltip by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label.uppercase(),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Split Input Row: Solid green toggle button on left + OutlinedTextField on right
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = label.uppercase(),
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            // Modern M3 Segmented Pill (ANY | ALL)
+            // Left-Side Solid Green Toggle Button (Split button style)
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                shape = RoundedCornerShape(8.dp),
+                color = TitaniumMint.Mint500,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        onMatchAllChange(!isMatchAll)
+                        showModeTooltip = false
+                    }
             ) {
                 Row(
-                    modifier = Modifier.padding(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // ANY Segment
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (!isMatchAll) TitaniumMint.Mint500.copy(alpha = 0.22f) else Color.Transparent,
-                        border = if (!isMatchAll) BorderStroke(0.5.dp, TitaniumMint.Mint400.copy(alpha = 0.6f)) else null,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onMatchAllChange(false) }
-                    ) {
-                        Text(
-                            text = "ANY (OR)",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 8.5.sp,
-                            fontWeight = if (!isMatchAll) FontWeight.Bold else FontWeight.Medium,
-                            color = if (!isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = if (isMatchAll) "ALL" else "ANY",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TitaniumMint.CarbonOnyx
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Toggle ANY or ALL match mode",
+                        tint = TitaniumMint.CarbonOnyx,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
-                    // ALL Segment
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isMatchAll) TitaniumMint.Mint500.copy(alpha = 0.22f) else Color.Transparent,
-                        border = if (isMatchAll) BorderStroke(0.5.dp, TitaniumMint.Mint400.copy(alpha = 0.6f)) else null,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onMatchAllChange(true) }
+            // Text Input Field (Takes remaining width)
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(placeholder, fontSize = 13.sp) },
+                trailingIcon = {
+                    if (value.isNotEmpty()) {
+                        IconButton(onClick = { onValueChange("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = TitaniumMint.Mint400,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Dismissible Tooltip Helper
+        if (showModeTooltip) {
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(0.5.dp, TitaniumMint.Mint400.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "💡 Tap the green ANY/ALL button to toggle match logic.",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.5.sp,
+                        color = TitaniumMint.Mint400,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { showModeTooltip = false },
+                        modifier = Modifier.size(18.dp)
                     ) {
-                        Text(
-                            text = "ALL (AND)",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 8.5.sp,
-                            fontWeight = if (isMatchAll) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isMatchAll) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                        )
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(12.dp))
                     }
                 }
             }
         }
 
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, fontSize = 13.sp) },
-            trailingIcon = {
-                if (value.isNotEmpty()) {
-                    IconButton(onClick = { onValueChange("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
-                    }
-                }
-            },
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TitaniumMint.Mint400,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-
+        // Dynamic micro-explainer text
         Text(
             text = explainer,
             style = MaterialTheme.typography.labelSmall,

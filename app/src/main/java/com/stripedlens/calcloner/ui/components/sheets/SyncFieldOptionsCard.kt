@@ -179,27 +179,13 @@ private fun FieldAccordionRow(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .alpha(if (subOptionsEnabled) 1f else 0.45f)
+                        .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        expandedContent()
-                    }
-                    if (!subOptionsEnabled) {
-                        // Invisible overlay intercepting touches when sub-options are disabled
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable(enabled = false) {}
-                        )
-                    }
+                    expandedContent()
                 }
             }
         }
@@ -568,14 +554,15 @@ fun SyncFieldOptionsCard(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            val isBusy = customAvailability == CalendarContract.Events.AVAILABILITY_BUSY
+                            val isFree = customAvailability == CalendarContract.Events.AVAILABILITY_FREE
+                            val isTentative = customAvailability == CalendarContract.Events.AVAILABILITY_TENTATIVE
+                            val isEmpty = customAvailability == null
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                val isBusy = customAvailability == CalendarContract.Events.AVAILABILITY_BUSY
-                                val isFree = customAvailability == CalendarContract.Events.AVAILABILITY_FREE
-                                val isEmpty = customAvailability == null
-
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = if (isBusy) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -614,6 +601,32 @@ fun SyncFieldOptionsCard(
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = if (isFree) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isFree) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_TENTATIVE) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Tentative",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isTentative) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -771,7 +784,7 @@ fun SyncFieldOptionsCard(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Choose default status on target calendar:",
+                                text = "Choose default status on target calendar. Android doesn't allow empty (null).",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

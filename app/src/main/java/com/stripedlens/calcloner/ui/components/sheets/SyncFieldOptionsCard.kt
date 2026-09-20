@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
@@ -51,11 +52,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
@@ -72,6 +75,7 @@ private fun FieldAccordionRow(
     isExpanded: Boolean,
     onExpandToggle: () -> Unit,
     hasSubOptions: Boolean,
+    subOptionsEnabled: Boolean = checked,
     isError: Boolean = false,
     accentColor: Color = TitaniumMint.Mint400,
     onCheckedChange: (Boolean) -> Unit,
@@ -174,13 +178,27 @@ private fun FieldAccordionRow(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .alpha(if (subOptionsEnabled) 1f else 0.45f)
                 ) {
-                    expandedContent()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 40.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        expandedContent()
+                    }
+                    if (!subOptionsEnabled) {
+                        // Invisible overlay intercepting touches when sub-options are disabled
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable(enabled = false) {}
+                        )
+                    }
                 }
             }
         }
@@ -533,7 +551,8 @@ fun SyncFieldOptionsCard(
                         checked = syncAvailability,
                         isExpanded = availabilityExpanded,
                         onExpandToggle = { availabilityExpanded = !availabilityExpanded },
-                        hasSubOptions = !syncAvailability,
+                        hasSubOptions = true,
+                        subOptionsEnabled = !syncAvailability,
                         accentColor = accentColor,
                         onCheckedChange = onSyncAvailabilityChange
                     ) {
@@ -545,35 +564,74 @@ fun SyncFieldOptionsCard(
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                FilterChip(
-                                    selected = customAvailability == CalendarContract.Events.AVAILABILITY_BUSY,
-                                    onClick = { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_BUSY) },
-                                    label = { Text("Busy") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
-                                FilterChip(
-                                    selected = customAvailability == CalendarContract.Events.AVAILABILITY_FREE,
-                                    onClick = { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_FREE) },
-                                    label = { Text("Free") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
-                                FilterChip(
-                                    selected = customAvailability == null,
-                                    onClick = { onCustomAvailabilityChange(null) },
-                                    label = { Text("Empty / None") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
+                                val isBusy = customAvailability == CalendarContract.Events.AVAILABILITY_BUSY
+                                val isFree = customAvailability == CalendarContract.Events.AVAILABILITY_FREE
+                                val isEmpty = customAvailability == null
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isBusy) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isBusy) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_BUSY) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Busy",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isBusy) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isBusy) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isFree) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isFree) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAvailabilityChange(CalendarContract.Events.AVAILABILITY_FREE) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Free",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isFree) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isFree) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isEmpty) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isEmpty) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomAvailabilityChange(null) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Empty",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isEmpty) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isEmpty) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -588,7 +646,8 @@ fun SyncFieldOptionsCard(
                         checked = syncAttendees,
                         isExpanded = attendeesExpanded,
                         onExpandToggle = { attendeesExpanded = !attendeesExpanded },
-                        hasSubOptions = syncAttendees,
+                        hasSubOptions = true,
+                        subOptionsEnabled = syncAttendees,
                         accentColor = accentColor,
                         onCheckedChange = onSyncAttendeesChange
                     ) {
@@ -603,27 +662,55 @@ fun SyncFieldOptionsCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                FilterChip(
-                                    selected = attendeesPlacement != "START",
-                                    onClick = { onAttendeesPlacementChange("END") },
-                                    label = { Text("End of description (Default)") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
-                                FilterChip(
-                                    selected = attendeesPlacement == "START",
-                                    onClick = { onAttendeesPlacementChange("START") },
-                                    label = { Text("Beginning of description") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
+                                val isBefore = attendeesPlacement == "START"
+                                val isAfter = attendeesPlacement != "START"
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isBefore) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isBefore) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onAttendeesPlacementChange("START") }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Before\nDescription",
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isBefore) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isBefore) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isAfter) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isAfter) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onAttendeesPlacementChange("END") }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "After\nDescription",
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isAfter) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isAfter) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                             Text(
-                                text = "Invite Shield: Guest names and RSVP statuses are embedded into the description text, preventing upstream calendar providers (Google/Exchange) from sending duplicate meeting invites or failing sync.",
+                                text = "The list of Attendees and Invitees are added into the event description to prevent contact spamming and sync issues.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 fontSize = 10.sp
@@ -641,7 +728,8 @@ fun SyncFieldOptionsCard(
                         checked = syncLocation,
                         isExpanded = locationExpanded,
                         onExpandToggle = { locationExpanded = !locationExpanded },
-                        hasSubOptions = !syncLocation,
+                        hasSubOptions = true,
+                        subOptionsEnabled = !syncLocation,
                         accentColor = accentColor,
                         onCheckedChange = onSyncLocationChange
                     ) {
@@ -662,22 +750,7 @@ fun SyncFieldOptionsCard(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
 
-                    // 6. REMINDERS (Simple Toggle)
-                    FieldAccordionRow(
-                        title = "Reminders & Notifications",
-                        subtitle = "Mirror alarms, alert popups, and advance notifications",
-                        icon = Icons.Default.Alarm,
-                        checked = syncReminders,
-                        isExpanded = false,
-                        onExpandToggle = {},
-                        hasSubOptions = false,
-                        accentColor = accentColor,
-                        onCheckedChange = onSyncRemindersChange
-                    ) {}
-
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
-
-                    // 7. STATUS ACCORDION
+                    // 6. STATUS ACCORDION
                     FieldAccordionRow(
                         title = "Event Status",
                         subtitle = if (syncStatus) "Mirror Confirmed, Tentative, or Canceled status" else "Fixed status override",
@@ -685,7 +758,8 @@ fun SyncFieldOptionsCard(
                         checked = syncStatus,
                         isExpanded = statusExpanded,
                         onExpandToggle = { statusExpanded = !statusExpanded },
-                        hasSubOptions = !syncStatus,
+                        hasSubOptions = true,
+                        subOptionsEnabled = !syncStatus,
                         accentColor = accentColor,
                         onCheckedChange = onSyncStatusChange
                     ) {
@@ -697,39 +771,93 @@ fun SyncFieldOptionsCard(
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 val effectiveStatus = customStatus ?: CalendarContract.Events.STATUS_CONFIRMED
-                                FilterChip(
-                                    selected = effectiveStatus == CalendarContract.Events.STATUS_CONFIRMED,
-                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_CONFIRMED) },
-                                    label = { Text("Confirmed") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
-                                FilterChip(
-                                    selected = effectiveStatus == CalendarContract.Events.STATUS_TENTATIVE,
-                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_TENTATIVE) },
-                                    label = { Text("Tentative") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
-                                FilterChip(
-                                    selected = effectiveStatus == CalendarContract.Events.STATUS_CANCELED,
-                                    onClick = { onCustomStatusChange(CalendarContract.Events.STATUS_CANCELED) },
-                                    label = { Text("Canceled") },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                        selectedLabelColor = accentColor
-                                    )
-                                )
+                                val isConfirmed = effectiveStatus == CalendarContract.Events.STATUS_CONFIRMED
+                                val isTentative = effectiveStatus == CalendarContract.Events.STATUS_TENTATIVE
+                                val isCanceled = effectiveStatus == CalendarContract.Events.STATUS_CANCELED
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isConfirmed) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isConfirmed) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CONFIRMED) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Confirmed",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isConfirmed) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isConfirmed) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isTentative) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isTentative) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_TENTATIVE) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Tentative",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isTentative) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isTentative) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isCanceled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, if (isCanceled) accentColor else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onCustomStatusChange(CalendarContract.Events.STATUS_CANCELED) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Canceled",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isCanceled) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isCanceled) TitaniumMint.CarbonOnyx else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), thickness = 0.5.dp)
+
+                    // 7. REMINDERS & NOTIFICATIONS (Last Option)
+                    FieldAccordionRow(
+                        title = "Reminders & Notifications",
+                        subtitle = "Mirror alarms, alert popups, and advance notifications",
+                        icon = Icons.Default.Alarm,
+                        checked = syncReminders,
+                        isExpanded = false,
+                        onExpandToggle = {},
+                        hasSubOptions = false,
+                        accentColor = accentColor,
+                        onCheckedChange = onSyncRemindersChange
+                    ) {}
                 }
             }
         }

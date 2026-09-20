@@ -187,7 +187,7 @@ private data class MockSampleEvent(
 fun EventConditionFilterCard(
     modifier: Modifier = Modifier,
     title: String = "Sync Conditions & Filters",
-    subtitle: String = "Filter events by availability, RSVP, schedule windows, and text.",
+    subtitle: String = "Events that match all the following criteria will be copied to the target calendar.",
     initialState: EventFilterUiState = remember { EventFilterUiState() },
     onStateChange: (EventFilterUiState) -> Unit = {}
 ) {
@@ -486,31 +486,6 @@ fun EventConditionFilterCard(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                         thickness = 0.5.dp
                     )
-
-                    // Explanatory Rule Logic Banner
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = TitaniumMint.Mint400,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Events that match all the following criteria will be copied to the target calendar.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
 
                     // Section A: Availability & RSVP Status
                     RuleSectionCard(
@@ -815,28 +790,6 @@ fun EventConditionFilterCard(
                                 onMatchAllChange = { mode -> updateState { s -> s.copy(descriptionDoesNotContainMatchAll = mode) } },
                                 onValueChange = { updateState { s -> s.copy(descriptionDoesNotContain = it) } }
                             )
-                        }
-                    }
-
-                    // Reset Filters Button
-                    if (state.activeRuleCount > 0) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            TextButton(
-                                onClick = {
-                                    validationErrorMessage = null
-                                    updateState {
-                                        EventFilterUiState(isExpanded = true, isEnabled = false)
-                                    }
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Reset All Conditions", style = MaterialTheme.typography.labelSmall)
-                            }
                         }
                     }
 
@@ -1244,7 +1197,7 @@ private fun KeywordInputField(
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 15.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = if (isMatchAll) "ALL" else "ANY",
@@ -1252,12 +1205,6 @@ private fun KeywordInputField(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = TitaniumMint.CarbonOnyx
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Toggle ANY or ALL match mode",
-                        tint = TitaniumMint.CarbonOnyx,
-                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

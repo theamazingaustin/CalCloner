@@ -92,7 +92,7 @@ fun AppBottomNavigationBar(
 
         // One-Time Operations Navigation Item (uniform green palette)
         NavigationBarItem(
-            selected = currentTab == AppTab.ONE_TIME || currentTab == AppTab.DELETE,
+            selected = currentTab == AppTab.ONE_TIME || currentTab == AppTab.DELETE || currentTab == AppTab.ONE_TIME_COPY,
             onClick = {
                 scope.launch {
                     oneTimeScaleAnim.animateTo(
@@ -117,7 +117,7 @@ fun AppBottomNavigationBar(
                 Text(
                     text = "One-Time",
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = if (currentTab == AppTab.ONE_TIME || currentTab == AppTab.DELETE) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (currentTab == AppTab.ONE_TIME || currentTab == AppTab.DELETE || currentTab == AppTab.ONE_TIME_COPY) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 12.sp
                 )
             },

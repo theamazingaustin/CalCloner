@@ -1,12 +1,14 @@
 package com.stripedlens.calcloner.viewmodel
 
 import com.stripedlens.calcloner.CalendarInfo
+import com.stripedlens.calcloner.OneTimeCopyResult
 import com.stripedlens.calcloner.SyncPair
 
 enum class AppTab {
     SYNC,
     ONE_TIME,
-    DELETE
+    DELETE,
+    ONE_TIME_COPY
 }
 
 enum class DeleteOperationType {
@@ -61,6 +63,15 @@ data class MainUiState(
     val availableUpdate: com.stripedlens.calcloner.util.AppUpdateInfo? = null,
     val isDownloadingUpdate: Boolean = false,
     val updateDownloadProgress: Float = 0f,
+
+    // One-Time Copy & Move Operation State
+    val oneTimeSourceCalendar: CalendarInfo? = null,
+    val oneTimeTargetCalendar: CalendarInfo? = null,
+    val oneTimeDaysPast: Int = 30,
+    val oneTimeDaysFuture: Int = 90,
+    val oneTimeIsCopying: Boolean = false,
+    val oneTimeCopyProgress: String? = null,
+    val oneTimeCopyResult: OneTimeCopyResult? = null,
 
     // One-shot User Feedback Toasts/Messages
     val userToastMessage: String? = null

@@ -38,6 +38,7 @@ import com.stripedlens.calcloner.viewmodel.MainUiState
 fun OneTimeOperationsScreen(
     uiState: MainUiState,
     onOpenDeleteScreen: () -> Unit = {},
+    onOpenCopyScreen: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -84,23 +85,25 @@ fun OneTimeOperationsScreen(
                 onActionClick = onOpenDeleteScreen
             )
 
-            // ── Coming Soon Features ──────────────────────────────────────────────
-
             OneTimeFeatureCard(
                 title = "One-Time Event Copy & Move",
-                badge = "COMING SOON",
-                badgeColor = TitaniumMint.Amber400,
-                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
-                description = "Select a source and target calendar, choose a date window or pick specific events, and copy or move them immediately.",
+                badge = "AVAILABLE",
+                badgeColor = TitaniumMint.Mint400,
+                badgeBg = TitaniumMint.Mint500.copy(alpha = 0.15f),
+                badgeBorder = TitaniumMint.Mint500.copy(alpha = 0.35f),
+                description = "Transfer events on demand between any two calendars within a custom date window with strict source calendar protection.",
                 icon = Icons.Default.ContentCopy,
                 iconColor = TitaniumMint.Mint400,
                 features = listOf(
-                    "Copy single event or entire date range across any calendars",
-                    "Move (cut & paste) with automatic source event deletion",
-                    "Side-by-side match preview before executing"
-                )
+                    "Safe additive copy: source calendar is strictly read-only and never modified",
+                    "Cloned events are stamped with CalCloner tags for easy identification and deletion",
+                    "Move (cut & paste) is staged in the UI and will unlock once backups are available"
+                ),
+                actionButtonText = "Open Copy & Move Tool",
+                onActionClick = onOpenCopyScreen
             )
+
+            // ── Coming Soon Features ──────────────────────────────────────────────
 
             OneTimeFeatureCard(
                 title = "Filtered Event Deletion",

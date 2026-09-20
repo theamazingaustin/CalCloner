@@ -54,6 +54,13 @@ data class SyncResult(
     val durationMs: Long = 0L
 )
 
+data class OneTimeCopyResult(
+    val copiedCount: Int,
+    val skippedCount: Int,
+    val totalMatched: Int,
+    val durationMs: Long = 0L
+)
+
 data class SyncPair(
     val id: String,
     val nickname: String? = null,

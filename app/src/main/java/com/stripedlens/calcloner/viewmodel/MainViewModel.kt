@@ -769,6 +769,80 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
+    // One-Time Copy & Move Actions
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fun selectOneTimeSourceCalendar(calendar: CalendarInfo?) {
+        _uiState.update { it.copy(oneTimeSourceCalendar = calendar) }
+    }
+
+    fun selectOneTimeTargetCalendar(calendar: CalendarInfo?) {
+        _uiState.update { it.copy(oneTimeTargetCalendar = calendar) }
+    }
+
+    fun setOneTimeDateWindow(daysPast: Int, daysFuture: Int) {
+        _uiState.update {
+            it.copy(
+                oneTimeDaysPast = daysPast,
+                oneTimeDaysFuture = daysFuture
+            )
+        }
+    }
+
+    fun dismissOneTimeCopyResult() {
+        _uiState.update { it.copy(oneTimeCopyResult = null) }
+    }
+
+    fun executeOneTimeCopy(
+        filterUiState: com.stripedlens.calcloner.ui.components.filters.EventFilterUiState? = null
+    ) {
+        val source = _uiState.value.oneTimeSourceCalendar ?: return
+        val target = _uiState.value.oneTimeTargetCalendar ?: return
+        if (source.id == target.id) return
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    oneTimeIsCopying = true,
+                    oneTimeCopyProgress = "Starting one-time event copy...",
+                    oneTimeCopyResult = null
+                )
+            }
+
+            try {
+                val result = CalendarSyncEngine.copyEventsOneTime(
+                    context = getApplication(),
+                    fromCalendarId = source.id,
+                    toCalendarId = target.id,
+                    daysPast = _uiState.value.oneTimeDaysPast,
+                    daysFuture = _uiState.value.oneTimeDaysFuture,
+                    filterUiState = filterUiState,
+                    onProgress = { current, total, message ->
+                        _uiState.update { it.copy(oneTimeCopyProgress = message) }
+                    }
+                )
+
+                _uiState.update {
+                    it.copy(
+                        oneTimeIsCopying = false,
+                        oneTimeCopyProgress = null,
+                        oneTimeCopyResult = result
+                    )
+                }
+                refreshCalendars()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        oneTimeIsCopying = false,
+                        oneTimeCopyProgress = null,
+                        userToastMessage = "One-time copy failed: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
     // App Settings & Configuration (Import/Export, Disclaimer, Theme)
     // ─────────────────────────────────────────────────────────────────────────────
 

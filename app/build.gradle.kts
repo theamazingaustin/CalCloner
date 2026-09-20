@@ -22,8 +22,8 @@ android {
         applicationId = "com.stripedlens.calcloner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 22
-        versionName = "2.2"
+        versionCode = 23
+        versionName = "2.3"
         buildConfigField("String", "BUILD_TAG", "\"$gitTag\"")
 
         vectorDrawables {

@@ -381,4 +381,28 @@ object CalendarSyncEngine {
             onProgress = onProgress
         )
     }
+
+    /**
+     * Executes an on-demand one-time copy of events between two calendars.
+     */
+    suspend fun copyEventsOneTime(
+        context: Context,
+        fromCalendarId: Long,
+        toCalendarId: Long,
+        daysPast: Int = 30,
+        daysFuture: Int = 90,
+        filterUiState: com.stripedlens.calcloner.ui.components.filters.EventFilterUiState? = null,
+        onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
+    ): OneTimeCopyResult = syncMutex.withLock {
+        CalendarEventWriter.copyEventsOneTime(
+            context = context,
+            fromCalendarId = fromCalendarId,
+            toCalendarId = toCalendarId,
+            daysPast = daysPast,
+            daysFuture = daysFuture,
+            filterUiState = filterUiState,
+            onProgress = onProgress,
+            onSelfWrite = { recordSelfWrite() }
+        )
+    }
 }

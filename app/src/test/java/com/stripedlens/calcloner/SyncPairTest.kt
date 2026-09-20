@@ -457,4 +457,22 @@ class SyncPairTest {
         assertTrue(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Sprint Planning"), titleExclusionPair))
         assertFalse(com.stripedlens.calcloner.engine.CalendarEventWriter.matchesFilters(makeEvent(title = "Canceled: Sprint Planning"), titleExclusionPair))
     }
+
+    @Test
+    fun testOneTimeCopyTrackingTagCompatibility() {
+        val tagRegex = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
+
+        val oneTimeTagMatch = tagRegex.find("Project roadmap [CalCloner-ID: onetime:12345] details")
+        assertNotNull(oneTimeTagMatch)
+        assertEquals("onetime", oneTimeTagMatch!!.groupValues[1])
+        assertEquals("12345", oneTimeTagMatch.groupValues[2])
+
+        val customAppUri = "calcloner://event/onetime/12345"
+        assertTrue(customAppUri.startsWith("calcloner://event/"))
+        val remainder = customAppUri.removePrefix("calcloner://event/")
+        val matchedPairId = remainder.substringBefore("/")
+        val sourceId = remainder.substringAfter("/").toLongOrNull()
+        assertEquals("onetime", matchedPairId)
+        assertEquals(12345L, sourceId)
+    }
 }

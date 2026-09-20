@@ -74,6 +74,7 @@ import com.stripedlens.calcloner.ui.components.AppBottomNavigationBar
 import com.stripedlens.calcloner.ui.components.CalClonerTopBar
 import com.stripedlens.calcloner.ui.dialogs.MainDialogHost
 import com.stripedlens.calcloner.ui.screens.DeleteScreen
+import com.stripedlens.calcloner.ui.screens.OneTimeCopyScreen
 import com.stripedlens.calcloner.ui.screens.OneTimeOperationsScreen
 import com.stripedlens.calcloner.ui.screens.SyncScreen
 import com.stripedlens.calcloner.ui.theme.CalClonerTheme
@@ -306,7 +307,7 @@ fun CalendarSyncApp(
     // Scaffold UI
     // ─────────────────────────────────────────────────────────────────────────
 
-    BackHandler(enabled = uiState.selectedTab == AppTab.DELETE) {
+    BackHandler(enabled = uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY) {
         viewModel.selectTab(AppTab.ONE_TIME)
     }
 
@@ -324,7 +325,7 @@ fun CalendarSyncApp(
                 onExportConfig = { viewModel.exportConfiguration(context) },
                 onImportConfig = { importConfigLauncher.launch("application/json") },
                 onOpenBatterySettings = { openBatterySettings() },
-                onNavigateBack = if (uiState.selectedTab == AppTab.DELETE) {
+                onNavigateBack = if (uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY) {
                     { viewModel.selectTab(AppTab.ONE_TIME) }
                 } else null
             )
@@ -402,7 +403,8 @@ fun CalendarSyncApp(
                 AppTab.ONE_TIME -> {
                     OneTimeOperationsScreen(
                         uiState = uiState,
-                        onOpenDeleteScreen = { viewModel.selectTab(AppTab.DELETE) }
+                        onOpenDeleteScreen = { viewModel.selectTab(AppTab.DELETE) },
+                        onOpenCopyScreen = { viewModel.selectTab(AppTab.ONE_TIME_COPY) }
                     )
                 }
                 AppTab.DELETE -> {
@@ -413,6 +415,17 @@ fun CalendarSyncApp(
                         onConfirmationTextChanged = { text -> viewModel.setDeleteConfirmationText(text) },
                         onDeleteConfirmed = { viewModel.executeCalendarDelete() },
                         onPurgeTombstones = { calendar -> viewModel.executePurgeTombstones(calendar) }
+                    )
+                }
+                AppTab.ONE_TIME_COPY -> {
+                    OneTimeCopyScreen(
+                        uiState = uiState,
+                        onNavigateBack = { viewModel.selectTab(AppTab.ONE_TIME) },
+                        onSourceCalendarSelected = { viewModel.selectOneTimeSourceCalendar(it) },
+                        onTargetCalendarSelected = { viewModel.selectOneTimeTargetCalendar(it) },
+                        onDateWindowChanged = { past, future -> viewModel.setOneTimeDateWindow(past, future) },
+                        onExecuteCopy = { viewModel.executeOneTimeCopy() },
+                        onDismissCopyResult = { viewModel.dismissOneTimeCopyResult() }
                     )
                 }
             }

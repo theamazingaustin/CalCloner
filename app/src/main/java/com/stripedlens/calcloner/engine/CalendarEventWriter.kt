@@ -606,6 +606,7 @@ object CalendarEventWriter {
         filterDescriptionDoesNotContain: String = "",
         filterDescriptionDoesNotContainMatchAll: Boolean = false,
         activePairIds: Set<String> = emptySet(),
+        allowPruning: Boolean = true,
         onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
         onSelfWrite: (() -> Unit)? = null
     ): SyncResult {
@@ -969,69 +970,71 @@ object CalendarEventWriter {
         }
 
         // Pruning out-of-window, filter-excluded, and deleted events
-        val activeSourceIds = sourceEvents.map { it.id }.toSet()
-        val excludedSourceIds = excludedSourceEvents.map { it.id }.toSet()
         var deletedCount = 0
-        val eventsToDelete = mutableListOf<Long>()
-        val candidateSourceIds = mutableListOf<Long>()
+        if (allowPruning) {
+            val activeSourceIds = sourceEvents.map { it.id }.toSet()
+            val excludedSourceIds = excludedSourceEvents.map { it.id }.toSet()
+            val eventsToDelete = mutableListOf<Long>()
+            val candidateSourceIds = mutableListOf<Long>()
 
-        for ((sourceId, meta) in existingTargetEvents) {
-            val isOutOfWindow = !meta.hasRrule && (meta.dtStart < windowStart || meta.dtStart > windowEnd)
-            if (isOutOfWindow) {
-                eventsToDelete.add(meta.targetId)
-            } else if (sourceId in excludedSourceIds) {
-                eventsToDelete.add(meta.targetId)
-            } else if (sourceId !in activeSourceIds) {
-                candidateSourceIds.add(sourceId)
+            for ((sourceId, meta) in existingTargetEvents) {
+                val isOutOfWindow = !meta.hasRrule && (meta.dtStart < windowStart || meta.dtStart > windowEnd)
+                if (isOutOfWindow) {
+                    eventsToDelete.add(meta.targetId)
+                } else if (sourceId in excludedSourceIds) {
+                    eventsToDelete.add(meta.targetId)
+                } else if (sourceId !in activeSourceIds) {
+                    candidateSourceIds.add(sourceId)
+                }
             }
-        }
 
-        if (candidateSourceIds.isNotEmpty()) {
-            val verifiedSourceIds = mutableSetOf<Long>()
-            candidateSourceIds.chunked(150).forEach { chunk ->
-                val inClause = chunk.joinToString(",")
-                val sel = "${CalendarContract.Events._ID} IN ($inClause) AND ${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0"
-                try {
-                    context.contentResolver.query(
-                        CalendarContract.Events.CONTENT_URI,
-                        arrayOf(CalendarContract.Events._ID),
-                        sel,
-                        arrayOf(fromCalendarId.toString()),
-                        null
-                    )?.use { cur ->
-                        val idCol = cur.getColumnIndexOrThrow(CalendarContract.Events._ID)
-                        while (cur.moveToNext()) {
-                            verifiedSourceIds.add(cur.getLong(idCol))
+            if (candidateSourceIds.isNotEmpty()) {
+                val verifiedSourceIds = mutableSetOf<Long>()
+                candidateSourceIds.chunked(150).forEach { chunk ->
+                    val inClause = chunk.joinToString(",")
+                    val sel = "${CalendarContract.Events._ID} IN ($inClause) AND ${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0"
+                    try {
+                        context.contentResolver.query(
+                            CalendarContract.Events.CONTENT_URI,
+                            arrayOf(CalendarContract.Events._ID),
+                            sel,
+                            arrayOf(fromCalendarId.toString()),
+                            null
+                        )?.use { cur ->
+                            val idCol = cur.getColumnIndexOrThrow(CalendarContract.Events._ID)
+                            while (cur.moveToNext()) {
+                                verifiedSourceIds.add(cur.getLong(idCol))
+                            }
                         }
+                    } catch (_: Exception) {}
+                }
+
+                for (sourceId in candidateSourceIds) {
+                    if (sourceId !in verifiedSourceIds) {
+                        existingTargetEvents[sourceId]?.let { eventsToDelete.add(it.targetId) }
                     }
-                } catch (_: Exception) {}
-            }
-
-            for (sourceId in candidateSourceIds) {
-                if (sourceId !in verifiedSourceIds) {
-                    existingTargetEvents[sourceId]?.let { eventsToDelete.add(it.targetId) }
                 }
             }
-        }
 
-        if (eventsToDelete.isNotEmpty()) {
-            onProgress?.invoke(total, total, "Removing ${eventsToDelete.size} deleted/out-of-window event(s) from clone...")
-            eventsToDelete.chunked(200).forEach { chunk ->
-                val ops = ArrayList<ContentProviderOperation>()
-                for (id in chunk) {
-                    val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
-                    ops.add(ContentProviderOperation.newDelete(eventUri).build())
-                }
-                try {
-                    val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
-                    deletedCount += results.sumOf { (it.count ?: 0).toInt() }
-                } catch (_: Exception) {
+            if (eventsToDelete.isNotEmpty()) {
+                onProgress?.invoke(total, total, "Removing ${eventsToDelete.size} deleted/out-of-window event(s) from clone...")
+                eventsToDelete.chunked(200).forEach { chunk ->
+                    val ops = ArrayList<ContentProviderOperation>()
                     for (id in chunk) {
-                        try {
-                            val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
-                            val rows = context.contentResolver.delete(eventUri, null, null)
-                            if (rows > 0) deletedCount++
-                        } catch (_: Exception) {}
+                        val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
+                        ops.add(ContentProviderOperation.newDelete(eventUri).build())
+                    }
+                    try {
+                        val results = context.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
+                        deletedCount += results.sumOf { (it.count ?: 0).toInt() }
+                    } catch (_: Exception) {
+                        for (id in chunk) {
+                            try {
+                                val eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
+                                val rows = context.contentResolver.delete(eventUri, null, null)
+                                if (rows > 0) deletedCount++
+                            } catch (_: Exception) {}
+                        }
                     }
                 }
             }
@@ -1088,6 +1091,72 @@ object CalendarEventWriter {
             totalSourceEvents = total,
             deletedCount = deletedCount,
             durationMs = durationMs
+        )
+    }
+
+    /**
+     * Executes an on-demand one-time copy of events from [fromCalendarId] to [toCalendarId]
+     * within [daysPast] and [daysFuture].
+     *
+     * Invariants:
+     * - The source calendar ([fromCalendarId]) is strictly read-only: no events are modified or removed.
+     * - Target calendar ([toCalendarId]) only receives additions or updates for missing/changed events.
+     * - Existing events on target calendar are never pruned/deleted.
+     * - Cloned events receive tag `[CalCloner-ID: onetime:<id>]` and URI `calcloner://event/onetime/<id>`
+     *   so they can be safely identified and purged via the One-Time Delete Tool.
+     */
+    suspend fun copyEventsOneTime(
+        context: Context,
+        fromCalendarId: Long,
+        toCalendarId: Long,
+        daysPast: Int = 30,
+        daysFuture: Int = 90,
+        filterUiState: com.stripedlens.calcloner.ui.components.filters.EventFilterUiState? = null,
+        onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null,
+        onSelfWrite: (() -> Unit)? = null
+    ): com.stripedlens.calcloner.OneTimeCopyResult {
+        val result = syncEventsToTarget(
+            context = context,
+            fromCalendarId = fromCalendarId,
+            toCalendarId = toCalendarId,
+            daysPast = daysPast,
+            daysFuture = daysFuture,
+            pairId = "onetime",
+            allowPruning = false,
+            filterEnabled = filterUiState?.isEnabled ?: false,
+            filterAllowBusy = filterUiState?.allowBusy ?: true,
+            filterAllowFree = filterUiState?.allowFree ?: true,
+            filterAllowTentative = filterUiState?.allowTentative ?: false,
+            filterAllowEmpty = filterUiState?.allowEmpty ?: true,
+            filterRsvpAccepted = filterUiState?.rsvpAccepted ?: true,
+            filterRsvpTentative = filterUiState?.rsvpTentative ?: false,
+            filterRsvpDeclined = filterUiState?.rsvpDeclined ?: false,
+            filterIncludeAllDay = filterUiState?.includeAllDayEvents ?: true,
+            filterEnableTimeFilter = filterUiState?.enableTimeFilter ?: false,
+            filterFromHour = filterUiState?.fromHour ?: 9,
+            filterFromMinute = filterUiState?.fromMinute ?: 0,
+            filterToHour = filterUiState?.toHour ?: 17,
+            filterToMinute = filterUiState?.toMinute ?: 0,
+            filterActiveDays = filterUiState?.activeDays ?: setOf(1, 2, 3, 4, 5, 6, 7),
+            filterTitleContains = filterUiState?.titleContains ?: "",
+            filterTitleContainsMatchAll = filterUiState?.titleContainsMatchAll ?: false,
+            filterTitleDoesNotContain = filterUiState?.titleDoesNotContain ?: "",
+            filterTitleDoesNotContainMatchAll = filterUiState?.titleDoesNotContainMatchAll ?: false,
+            filterDescriptionContains = filterUiState?.descriptionContains ?: "",
+            filterDescriptionContainsMatchAll = filterUiState?.descriptionContainsMatchAll ?: false,
+            filterDescriptionDoesNotContain = filterUiState?.descriptionDoesNotContain ?: "",
+            filterDescriptionDoesNotContainMatchAll = filterUiState?.descriptionDoesNotContainMatchAll ?: false,
+            onProgress = onProgress,
+            onSelfWrite = onSelfWrite
+        )
+
+        val totalCopied = result.insertedCount + result.updatedCount
+        val totalSkipped = (result.totalSourceEvents - totalCopied).coerceAtLeast(0)
+        return com.stripedlens.calcloner.OneTimeCopyResult(
+            copiedCount = totalCopied,
+            skippedCount = totalSkipped,
+            totalMatched = result.totalSourceEvents,
+            durationMs = result.durationMs
         )
     }
 }

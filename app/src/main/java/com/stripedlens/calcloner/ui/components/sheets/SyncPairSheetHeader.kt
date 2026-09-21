@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import com.stripedlens.calcloner.ui.components.CalClonerSwitch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,13 +54,13 @@ fun SyncPairSheetHeader(
             }
             Column {
                 Text(
-                    text = if (isEditing) "Edit Sync Configuration" else "New Sync Configuration",
+                    text = if (isEditing) "Edit Live Clone" else "New Live Clone",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = contentColor
                 )
                 Text(
-                    text = if (isEditing) "Configure Route, Window & Filters" else "Map source calendar to target clone",
+                    text = if (isEditing) "Configure Route, Window & Filters (1-Way Sync)" else "Continuous 1-way sync to target calendar",
                     style = MaterialTheme.typography.labelSmall,
                     color = subheadColor,
                     fontSize = 11.sp
@@ -78,12 +79,9 @@ fun SyncPairSheetHeader(
                 fontWeight = FontWeight.Bold,
                 color = contentColor
             )
-            Switch(
+            CalClonerSwitch(
                 checked = isEnabled,
                 onCheckedChange = onEnabledChange,
-                modifier = Modifier
-                    .scale(0.85f)
-                    .height(24.dp),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color.White.copy(alpha = 0.45f),

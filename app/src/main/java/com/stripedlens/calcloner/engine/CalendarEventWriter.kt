@@ -36,6 +36,8 @@ object CalendarEventWriter {
     private val CALCLONER_TAG_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REGEX
     private val CALCLONER_TAG_REPLACE_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_TAG_REPLACE_REGEX
     private val LEGACY_CALCLONE_TAG_REPLACE_REGEX = com.stripedlens.calcloner.AppConstants.Engine.LEGACY_CALCLONE_TAG_REPLACE_REGEX
+    private val CALCLONER_UID_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_UID_REGEX
+    private val CALCLONER_UID_REPLACE_REGEX = com.stripedlens.calcloner.AppConstants.Engine.CALCLONER_UID_REPLACE_REGEX
 
     internal data class ClonedEventMeta(
         val targetId: Long,
@@ -243,8 +245,9 @@ object CalendarEventWriter {
             }
             put(CalendarContract.Events.EVENT_LOCATION, locationToUse)
 
-            // Description Tracking Tag: Append [CalCloner-ID: <pairId>:<id>] for cross-cloud persistence
-            val trackingTag = if (pairId != null) "[CalCloner-ID: ${pairId}:${event.id}]" else "[CalCloner-ID: ${event.id}]"
+            // Description Tracking Tag: Append [CalCloner-ID: <pairId>:<id>] and [CalCloner-UID: <syncId>] for cross-cloud persistence
+            val uidTag = if (!event.syncId.isNullOrBlank()) " [CalCloner-UID: ${event.syncId}]" else ""
+            val trackingTag = if (pairId != null) "[CalCloner-ID: ${pairId}:${event.id}]$uidTag" else "[CalCloner-ID: ${event.id}]$uidTag"
             val attBlock = if (syncAttendees && event.attendees.isNotEmpty()) {
                 formatAttendeesBlock(event.attendees)
             } else ""
@@ -253,6 +256,7 @@ object CalendarEventWriter {
                 val cleanBaseDesc = (event.description ?: "")
                     .replace(CALCLONER_TAG_REPLACE_REGEX, "")
                     .replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, "")
+                    .replace(CALCLONER_UID_REPLACE_REGEX, "")
                     .trim()
                 val descWithAttendees = when {
                     attBlock.isEmpty() -> cleanBaseDesc
@@ -274,6 +278,7 @@ object CalendarEventWriter {
                 val cleanFixed = (customDescription?.trim() ?: "")
                     .replace(CALCLONER_TAG_REPLACE_REGEX, "")
                     .replace(LEGACY_CALCLONE_TAG_REPLACE_REGEX, "")
+                    .replace(CALCLONER_UID_REPLACE_REGEX, "")
                     .trim()
                 val descWithAttendees = when {
                     attBlock.isEmpty() -> cleanFixed
@@ -376,7 +381,8 @@ object CalendarEventWriter {
 
             put(CalendarContract.Events.HAS_ALARM, if (event.reminders.isNotEmpty()) 1 else 0)
             put(CalendarContract.Events.CUSTOM_APP_PACKAGE, context.packageName)
-            val fullAppUri = if (pairId != null) "${uriPrefix}${pairId}/${event.id}" else "$uriPrefix${event.id}"
+            val uidParam = if (!event.syncId.isNullOrBlank()) "?uid=${event.syncId}" else ""
+            val fullAppUri = if (pairId != null) "${uriPrefix}${pairId}/${event.id}$uidParam" else "$uriPrefix${event.id}$uidParam"
             put(CalendarContract.Events.CUSTOM_APP_URI, fullAppUri)
 
             // Solution A: Two-pass recurrence exception linking
@@ -682,6 +688,7 @@ object CalendarEventWriter {
 
         // Find existing events in TARGET calendar using CUSTOM_APP_URI or [CalClone-ID] tag or title/time signature
         val existingTargetEvents = mutableMapOf<Long, ClonedEventMeta>()
+        val existingTargetByUid = mutableMapOf<String, ClonedEventMeta>()
         val existingTargetBySignature = mutableMapOf<String, ClonedEventMeta>()
         val redundantDuplicateIdsToDelete = mutableListOf<Long>()
         val sourceIdToTargetIdMap = mutableMapOf<Long, Long>()
@@ -782,14 +789,19 @@ object CalendarEventWriter {
 
                 var sourceId: Long? = null
                 var matchedPairId: String? = null
-                if (customUri != null) {
+                val cleanCustomUri = customUri?.substringBefore("?")
+                val uriUid = if (customUri != null && customUri.contains("?uid=")) {
+                    customUri.substringAfter("?uid=").ifEmpty { null }
+                } else null
+
+                if (cleanCustomUri != null) {
                     when {
-                        pairId != null && customUri.startsWith("${uriPrefix}${pairId}/") -> {
-                            sourceId = customUri.removePrefix("${uriPrefix}${pairId}/").toLongOrNull()
+                        pairId != null && cleanCustomUri.startsWith("${uriPrefix}${pairId}/") -> {
+                            sourceId = cleanCustomUri.removePrefix("${uriPrefix}${pairId}/").toLongOrNull()
                             matchedPairId = pairId
                         }
-                        customUri.startsWith(uriPrefix) -> {
-                            val remainder = customUri.removePrefix(uriPrefix)
+                        cleanCustomUri.startsWith(uriPrefix) -> {
+                            val remainder = cleanCustomUri.removePrefix(uriPrefix)
                             if (remainder.contains("/")) {
                                 matchedPairId = remainder.substringBefore("/")
                                 sourceId = remainder.substringAfter("/").toLongOrNull()
@@ -797,8 +809,8 @@ object CalendarEventWriter {
                                 sourceId = remainder.toLongOrNull()
                             }
                         }
-                        customUri.startsWith(legacyUriPrefix1) -> {
-                            val remainder = customUri.removePrefix(legacyUriPrefix1)
+                        cleanCustomUri.startsWith(legacyUriPrefix1) -> {
+                            val remainder = cleanCustomUri.removePrefix(legacyUriPrefix1)
                             if (remainder.contains("/")) {
                                 matchedPairId = remainder.substringBefore("/")
                                 sourceId = remainder.substringAfter("/").toLongOrNull()
@@ -806,7 +818,7 @@ object CalendarEventWriter {
                                 sourceId = remainder.toLongOrNull()
                             }
                         }
-                        customUri.startsWith(legacyUriPrefix2) -> sourceId = customUri.removePrefix(legacyUriPrefix2).toLongOrNull()
+                        cleanCustomUri.startsWith(legacyUriPrefix2) -> sourceId = cleanCustomUri.removePrefix(legacyUriPrefix2).toLongOrNull()
                     }
                 }
 
@@ -817,6 +829,14 @@ object CalendarEventWriter {
                         matchedPairId = tagMatch.groupValues.getOrNull(1)?.ifEmpty { null }
                         sourceId = tagMatch.groupValues.getOrNull(2)?.toLongOrNull()
                     }
+                }
+
+                val descUid = if (desc != null) {
+                    CALCLONER_UID_REGEX.find(desc)?.groupValues?.getOrNull(1)?.trim()?.ifEmpty { null }
+                } else null
+                val targetUid = uriUid ?: descUid
+                if (targetUid != null) {
+                    existingTargetByUid[targetUid] = meta
                 }
 
                 // Multi-Pair Isolation: If matchedPairId belongs to another ACTIVE sync pair, strictly protect & skip it!
@@ -913,7 +933,9 @@ object CalendarEventWriter {
                 attendeesPlacement = attendeesPlacement
             )
             val sigKey = "${event.title ?: ""}|${event.dtStart}"
-            val existingMeta = existingTargetEvents[event.id] ?: existingTargetBySignature[sigKey]
+            val existingMeta = existingTargetEvents[event.id]
+                ?: (if (!event.syncId.isNullOrEmpty()) existingTargetByUid[event.syncId] else null)
+                ?: existingTargetBySignature[sigKey]
 
             val targetId: Long?
             if (existingMeta != null) {
@@ -1121,7 +1143,7 @@ object CalendarEventWriter {
             toCalendarId = toCalendarId,
             daysPast = daysPast,
             daysFuture = daysFuture,
-            pairId = "onetime",
+            pairId = "onetime_${fromCalendarId}",
             allowPruning = false,
             filterEnabled = filterUiState?.isEnabled ?: false,
             filterAllowBusy = filterUiState?.allowBusy ?: true,

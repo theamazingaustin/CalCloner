@@ -111,7 +111,8 @@ object CalendarProviderReader {
         context: Context,
         fromCalendarId: Long,
         daysPast: Int = 30,
-        daysFuture: Int = 30
+        daysFuture: Int = 30,
+        includeClonedEvents: Boolean = false
     ): List<SyncEvent> {
         val rawEvents = mutableListOf<SyncEvent>()
         val projection = arrayOf(
@@ -133,7 +134,8 @@ object CalendarProviderReader {
             CalendarContract.Events.AVAILABILITY,
             CalendarContract.Events.ACCESS_LEVEL,
             CalendarContract.Events.EXDATE,
-            CalendarContract.Events.SELF_ATTENDEE_STATUS
+            CalendarContract.Events.SELF_ATTENDEE_STATUS,
+            CalendarContract.Events.CUSTOM_APP_URI
         )
 
         val now = System.currentTimeMillis()
@@ -176,9 +178,21 @@ object CalendarProviderReader {
             val accessCol = it.getColumnIndex(CalendarContract.Events.ACCESS_LEVEL)
             val exdateCol = it.getColumnIndex(CalendarContract.Events.EXDATE)
             val selfAttCol = it.getColumnIndex(CalendarContract.Events.SELF_ATTENDEE_STATUS)
+            val uriCol = it.getColumnIndex(CalendarContract.Events.CUSTOM_APP_URI)
 
             while (it.moveToNext()) {
                 val dtStart = it.getLong(startCol)
+                val desc = it.getString(descCol)
+                val customUri = if (uriCol != -1 && !it.isNull(uriCol)) it.getString(uriCol) else null
+
+                // Anti-daisy-chaining: never clone an already-cloned event unless explicitly requested
+                if (!includeClonedEvents && (
+                    (customUri != null && customUri.startsWith("calcloner://event/")) ||
+                    (desc != null && (desc.contains("[CalCloner-ID:") || desc.contains("[CalClone-ID:")))
+                )) {
+                    continue
+                }
+
                 val rrule = it.getString(rruleCol)
                 val originalId = if (origIdCol != -1 && !it.isNull(origIdCol)) it.getLong(origIdCol) else null
                 val originalSyncId = if (origSyncIdCol != -1 && !it.isNull(origSyncIdCol)) it.getString(origSyncIdCol) else null
@@ -200,7 +214,7 @@ object CalendarProviderReader {
                     SyncEvent(
                         id = it.getLong(idCol),
                         title = it.getString(titleCol),
-                        description = it.getString(descCol),
+                        description = desc,
                         location = it.getString(locCol),
                         dtStart = dtStart,
                         dtEnd = if (it.isNull(endCol)) null else it.getLong(endCol),

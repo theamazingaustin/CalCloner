@@ -52,7 +52,13 @@ fun DeleteScreen(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val selectedCalendar = uiState.selectedDeleteCalendar
-    val requiredPhrase = selectedCalendar?.let { "delete ${it.displayName.trim()}" } ?: ""
+    val requiredPhrase = selectedCalendar?.let {
+        if (uiState.deleteOperationType == DeleteOperationType.PURGE_CLONED) {
+            "delete ${it.displayName.trim()}"
+        } else {
+            "full wipe ${it.displayName.trim()}"
+        }
+    } ?: ""
     val isConfirmed = selectedCalendar != null &&
             requiredPhrase.isNotEmpty() &&
             uiState.deleteConfirmationText.trim().equals(requiredPhrase, ignoreCase = true)

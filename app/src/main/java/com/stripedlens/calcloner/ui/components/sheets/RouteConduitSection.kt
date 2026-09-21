@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -154,7 +155,7 @@ fun AnimatedConduitPipe(
 @Composable
 fun CalendarSelectionCard(
     title: String,
-    badgeText: String,
+    badgeText: String? = null,
     isSource: Boolean,
     calendars: List<CalendarInfo>,
     selectedCalendar: CalendarInfo?,
@@ -242,30 +243,44 @@ fun CalendarSelectionCard(
                     )
                 }
 
-                // Info Button (Always visible: Read Only / Full Access)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = containerTint,
-                    border = BorderStroke(1.dp, containerBorder),
-                    modifier = Modifier.clickable { onInfoClick() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Info Button / Badge (Pill when badgeText present, subtle icon when clean)
+                if (badgeText != null) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = containerTint,
+                        border = BorderStroke(1.dp, containerBorder),
+                        modifier = Modifier.clickable { onInfoClick() }
                     ) {
-                        Text(
-                            text = badgeText,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accentColor
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = badgeText,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentColor
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Info",
+                                tint = accentColor,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                } else {
+                    IconButton(
+                        onClick = onInfoClick,
+                        modifier = Modifier.size(24.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = "Info",
-                            tint = accentColor,
-                            modifier = Modifier.size(12.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }

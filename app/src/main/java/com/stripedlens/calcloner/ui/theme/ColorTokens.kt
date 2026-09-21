@@ -101,12 +101,12 @@ data class CalClonerColors(
 val DarkCalClonerColors = CalClonerColors(
     isDark = true,
     accent = Palette.Mint400,
-    onAccent = Palette.Zinc950,
+    onAccent = Color(0xFF003824),
     accentSubtle = Palette.Mint500.copy(alpha = 0.15f),
     accentBorder = Palette.Mint500.copy(alpha = 0.35f),
 
     success = Palette.Mint400,
-    onSuccess = Palette.Zinc950,
+    onSuccess = Color(0xFF003824),
     successSubtle = Palette.Mint500.copy(alpha = 0.12f),
     successBorder = Palette.Mint500.copy(alpha = 0.30f),
 
@@ -131,7 +131,7 @@ val DarkCalClonerColors = CalClonerColors(
     textMuted = Palette.Zinc500,
 
     buttonPrimaryBg = Palette.Mint500,
-    buttonPrimaryContent = Palette.Zinc950,
+    buttonPrimaryContent = Color(0xFF003824),
     buttonDangerBg = Palette.Rose500,
     buttonDangerContent = Palette.White
 )

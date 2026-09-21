@@ -368,10 +368,16 @@ object CalendarIcsManager {
      * Replaces illegal filesystem characters in calendar names with underscores.
      */
     fun sanitizeFilename(name: String): String {
-        return name
-            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val sanitized = name
+            .replace(Regex("[\\x00-\\x1F\\\\/:*?\"<>|]"), "_")
+            .replace(Regex("\\.{2,}"), "_")
+            .replace(Regex("^\\.+|\\.+$"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
-            .ifEmpty { "Calendar" }
+        return if (sanitized.isEmpty() || sanitized.all { it == '_' || it == '.' }) {
+            "Calendar"
+        } else {
+            sanitized
+        }
     }
 }

@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import com.stripedlens.calcloner.AppConstants
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -116,27 +118,52 @@ fun SyncOverviewCard(
                 }
                 Column {
                     Text(
-                        text = "Master Sync",
+                        text = "Live Clone Pairs",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (anyEnabled) "${syncPairs.count { it.isEnabled }} of ${syncPairs.size} pairs active" else "All pairs paused",
+                        text = if (anyEnabled) "${syncPairs.count { it.isEnabled }} of ${syncPairs.size} active (1-way sync)" else "All clone pairs paused",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
                 }
             }
-            Switch(
+            CalClonerSwitch(
                 checked = anyEnabled,
                 enabled = syncPairs.isNotEmpty(),
-                onCheckedChange = onToggleAll,
-                modifier = Modifier
-                    .scale(0.85f)
-                    .height(24.dp)
+                onCheckedChange = onToggleAll
             )
+        }
+
+        // Multi-device best practice advisory banner
+        Surface(
+            shape = RoundedCornerShape(AppConstants.Ui.SubCardCornerRadius),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "Recommendation: Run CalCloner on ONE device only to prevent dueling sync engines and duplicate events.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp
+                )
+            }
         }
 
         val primaryColor = MaterialTheme.colorScheme.primary
@@ -180,7 +207,7 @@ fun SyncOverviewCard(
                 label = "syncAllButtonFade"
             ) { syncing ->
                 Text(
-                    text = if (syncing) "Syncing..." else "Sync All Now",
+                    text = if (syncing) "Cloning..." else "Clone All Now",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp

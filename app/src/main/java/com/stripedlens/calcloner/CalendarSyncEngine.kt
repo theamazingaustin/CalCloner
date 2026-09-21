@@ -28,7 +28,7 @@ object CalendarSyncEngine {
 
     @Volatile
     var lastSelfWriteTimestamp: Long = 0L
-        private set
+        internal set
 
     fun recordSelfWrite() {
         lastSelfWriteTimestamp = System.currentTimeMillis()
@@ -66,9 +66,10 @@ object CalendarSyncEngine {
         context: Context,
         fromCalendarId: Long,
         daysPast: Int = 30,
-        daysFuture: Int = 30
+        daysFuture: Int = 30,
+        includeClonedEvents: Boolean = false
     ): List<SyncEvent> {
-        return CalendarProviderReader.readSourceEvents(context, fromCalendarId, daysPast, daysFuture)
+        return CalendarProviderReader.readSourceEvents(context, fromCalendarId, daysPast, daysFuture, includeClonedEvents)
     }
 
     /**

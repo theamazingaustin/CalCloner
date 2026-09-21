@@ -184,13 +184,13 @@ fun SyncScreen(
                         }
 
                         Text(
-                            text = "No Calendar Pairs Yet",
+                            text = "No Live Clone Pairs Yet",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            text = "Add your first pair to begin safe, one-way calendar replication with zero battery drain.",
+                            text = "Add your first clone pair to begin continuous 1-way calendar replication with zero battery drain.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -203,7 +203,7 @@ fun SyncScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Add First Sync Pair")
+                            Text("Add First Clone Pair")
                         }
                     }
                 }

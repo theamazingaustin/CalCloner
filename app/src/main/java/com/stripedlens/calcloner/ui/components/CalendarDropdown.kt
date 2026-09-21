@@ -12,22 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.CalendarInfo
 
-@Composable
-fun CustomProgressBar(progress: Float, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .background(Color(0xFFE0E0E0), RoundedCornerShape(5.dp))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(5.dp))
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

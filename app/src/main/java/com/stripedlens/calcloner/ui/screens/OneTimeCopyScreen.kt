@@ -31,9 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WarningAmber
@@ -53,6 +51,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.stripedlens.calcloner.ui.components.ScreenHeaderBanner
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -77,6 +76,7 @@ import com.stripedlens.calcloner.OneTimeCopyResult
 import com.stripedlens.calcloner.ui.components.sheets.AnimatedConduitPipe
 import com.stripedlens.calcloner.ui.components.sheets.CalendarSelectionCard
 import com.stripedlens.calcloner.ui.dialogs.CalendarRoleInfoDialog
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.viewmodel.MainUiState
 
@@ -156,29 +156,11 @@ fun OneTimeCopyScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Top App Bar
-        TopAppBar(
-            title = {
-                Text(
-                    text = "One-Time Copy & Move",
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back to One-Time Operations"
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-            )
+        ScreenHeaderBanner(
+            icon = Icons.Default.ContentCopy,
+            title = "1-Time Clone",
+            subtitle = "AD-HOC 1-WAY TRANSFER",
+            description = "Transfer events between any two calendars on demand. Source calendar is strictly read-only and never modified."
         )
 
         Column(
@@ -188,125 +170,7 @@ fun OneTimeCopyScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── 1. Operation Mode Switcher (Copy vs Move) ─────────────────────
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "TRANSFER MODE",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TitaniumMint.Mint400
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Copy Option (Active)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = TitaniumMint.Mint500.copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, TitaniumMint.Mint500),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = null,
-                                    tint = TitaniumMint.Mint400,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Copy (Safe)",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = TitaniumMint.Mint400
-                                )
-                            }
-                        }
-
-                        // Move Option (Staged / Disabled)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                                .alpha(0.55f)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Move (Paused)",
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Move Explanation Note
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = TitaniumMint.Amber500.copy(alpha = 0.08f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WarningAmber,
-                            contentDescription = null,
-                            tint = TitaniumMint.Amber400,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .padding(top = 1.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Move mode will be enabled once automated backup & snapshot rollback features are implemented to prevent accidental data loss.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 15.sp
-                        )
-                    }
-                }
-            }
-
-            // ── 2. Route Conduit & Calendar Selection ─────────────────────────
+            // ── Route Conduit & Calendar Selection ─────────────────────────
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
@@ -325,7 +189,7 @@ fun OneTimeCopyScreen(
                     // Source Calendar Card
                     CalendarSelectionCard(
                         title = "Source Calendar (Read-Only)",
-                        badgeText = "SOURCE",
+                        badgeText = "READ-ONLY",
                         isSource = true,
                         calendars = prioritizedCalendars,
                         selectedCalendar = sourceCal,
@@ -348,7 +212,7 @@ fun OneTimeCopyScreen(
                     // Target Calendar Card
                     CalendarSelectionCard(
                         title = "Target Calendar (Writable)",
-                        badgeText = "TARGET",
+                        badgeText = null,
                         isSource = false,
                         calendars = prioritizedCalendars,
                         selectedCalendar = targetCal,
@@ -499,7 +363,7 @@ fun OneTimeCopyScreen(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = TitaniumMint.Mint500,
-                    contentColor = Color(0xFF003824),
+                    contentColor = CalClonerTheme.colors.onAccent,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
@@ -512,7 +376,7 @@ fun OneTimeCopyScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (uiState.oneTimeIsCopying) "Copying Events..." else "Copy Events to Target Calendar",
+                        text = if (uiState.oneTimeIsCopying) "Cloning Events..." else "Start 1-Time Clone",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -551,7 +415,7 @@ fun OneTimeCopyScreen(
             },
             title = {
                 Text(
-                    text = "One-Time Copy Complete",
+                    text = "1-Time Clone Complete",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -560,7 +424,7 @@ fun OneTimeCopyScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "• ${result.copiedCount} event(s) copied to ${targetCal?.displayName ?: "Target"}.",
+                        text = "• ${result.copiedCount} event(s) cloned to ${targetCal?.displayName ?: "Target"}.",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TitaniumMint.Mint400
@@ -579,7 +443,7 @@ fun OneTimeCopyScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "All copied events are tagged with [CalCloner-ID: onetime] and can be safely purged via the Delete Tool at any time.",
+                        text = "All cloned events are tagged with CalCloner tracking metadata and can be safely purged via the Delete Tool at any time.",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 15.sp
@@ -591,7 +455,7 @@ fun OneTimeCopyScreen(
                     onClick = onDismissCopyResult,
                     colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
                 ) {
-                    Text("Done", color = Color(0xFF003824), fontWeight = FontWeight.Bold)
+                    Text("Done", color = CalClonerTheme.colors.onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         )

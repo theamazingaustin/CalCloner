@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Tune
+import com.stripedlens.calcloner.ui.components.CalClonerSwitch
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 
 /**
@@ -398,7 +400,7 @@ fun EventConditionFilterCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Master Enable Switch with Error Guardrail
-                    Switch(
+                    CalClonerSwitch(
                         checked = state.isEnabled,
                         onCheckedChange = { targetState ->
                             if (targetState) {
@@ -416,13 +418,7 @@ fun EventConditionFilterCard(
                                 validationErrorMessage = null
                                 updateState { it.copy(isEnabled = false) }
                             }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = TitaniumMint.CarbonOnyx,
-                            checkedTrackColor = TitaniumMint.Mint500,
-                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                        }
                     )
 
                     IconButton(onClick = { updateState { it.copy(isExpanded = !it.isExpanded) } }) {
@@ -717,7 +713,7 @@ fun EventConditionFilterCard(
                                                 text = label,
                                                 style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isSelected) Color(0xFF003824) else MaterialTheme.colorScheme.onSurface
+                                                color = if (isSelected) CalClonerTheme.colors.onAccent else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -966,7 +962,7 @@ fun EventConditionFilterCard(
                                     text = "AM",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = if (isAm) Color(0xFF003824) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (isAm) CalClonerTheme.colors.onAccent else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
@@ -979,7 +975,7 @@ fun EventConditionFilterCard(
                                     text = "PM",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = if (!isAm) Color(0xFF003824) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (!isAm) CalClonerTheme.colors.onAccent else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }

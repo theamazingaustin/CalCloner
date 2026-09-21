@@ -175,12 +175,9 @@ fun SyncEngineSettingsCard(
                             fontSize = 11.sp
                         )
                     }
-                    Switch(
+                    CalClonerSwitch(
                         checked = syncOnLowBattery,
-                        onCheckedChange = onSaveSyncOnLowBattery,
-                        modifier = Modifier
-                            .scale(0.85f)
-                            .height(24.dp)
+                        onCheckedChange = onSaveSyncOnLowBattery
                     )
                 }
             }

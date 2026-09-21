@@ -224,7 +224,7 @@ fun SyncPairCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Edit Sync Configuration") },
+                            text = { Text("Edit Clone Configuration") },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -232,7 +232,7 @@ fun SyncPairCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete Sync Configuration", color = MaterialTheme.colorScheme.error) },
+                            text = { Text("Delete Clone Configuration", color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 showMenu = false
@@ -330,7 +330,7 @@ fun SyncPairCard(
                         val statusText = if (pair.lastSyncTime != null) {
                             DateTimeUtils.formatLastSync(pair.lastSyncTime)
                         } else {
-                            "Ready to sync"
+                            "Ready to clone"
                         }
                         Text(
                             text = statusText,
@@ -366,7 +366,7 @@ fun SyncPairCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = "Sync",
+                                contentDescription = "Clone",
                                 tint = if (pair.isEnabled && isTargetAccessible && pair.isConfigValidForSync) TitaniumMint.Mint400 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 modifier = Modifier
                                     .size(14.dp)
@@ -381,7 +381,7 @@ fun SyncPairCard(
                                 label = "cardSyncButtonFade"
                             ) { syncing ->
                                 Text(
-                                    text = if (syncing) "Syncing..." else "Sync Now",
+                                    text = if (syncing) "Cloning..." else "Clone Now",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -407,12 +407,9 @@ fun SyncPairCard(
                         color = if (pair.isEnabled) TitaniumMint.Mint400 else TitaniumMint.Amber400,
                         letterSpacing = 0.5.sp
                     )
-                    Switch(
+                    CalClonerSwitch(
                         checked = pair.isEnabled,
-                        onCheckedChange = onToggleEnabled,
-                        modifier = Modifier
-                            .scale(0.85f)
-                            .height(24.dp)
+                        onCheckedChange = onToggleEnabled
                     )
                 }
             }

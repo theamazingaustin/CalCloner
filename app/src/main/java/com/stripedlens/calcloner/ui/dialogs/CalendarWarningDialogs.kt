@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.ui.theme.UiDimensions
 
@@ -30,13 +31,13 @@ fun CalendarRoleInfoDialog(
     onDismiss: () -> Unit
 ) {
     val isSource = type == "source"
-    val title = if (isSource) "Primary Account" else "Writable Replica"
-    val subtitle = if (isSource) "SOURCE CALENDAR" else "TARGET CALENDAR"
+    val title = if (isSource) "Source Calendar" else "Target Calendar"
+    val subtitle = if (isSource) "READ-ONLY SOURCE" else "WRITABLE DESTINATION"
     val icon = if (isSource) Icons.Default.DateRange else Icons.Default.Refresh
     val description = if (isSource) {
-        "Events will be copied from this calendar. The source calendar and its events will never be altered, edited, or written to by CalCloner."
+        "Events will be cloned from this calendar. The source calendar is strictly read-only and will never be altered, edited, or written to by CalCloner."
     } else {
-        "This calendar will be populated with all events found in the source calendar. In case there is a bug or glitch, it is highly recommended to sync to a blank calendar, not a calendar mixed with other / manually created events."
+        "This calendar will receive cloned events from the source calendar. For best results, we recommend using a dedicated target calendar."
     }
 
     ApplyDialogBlurEffect()
@@ -143,7 +144,7 @@ fun CalendarRoleInfoDialog(
                             text = "Got it",
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF003824)
+                            color = CalClonerTheme.colors.onAccent
                         )
                     }
                 }
@@ -209,7 +210,7 @@ fun BatteryOptimizationInfoDialog(
                 Text(
                     text = "Continue",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF003824)
+                    color = CalClonerTheme.colors.onAccent
                 )
             }
         },

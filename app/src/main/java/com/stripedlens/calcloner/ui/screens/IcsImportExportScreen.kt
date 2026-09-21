@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.CalendarInfo
 import com.stripedlens.calcloner.domain.ics.ExportFormat
 import com.stripedlens.calcloner.ui.components.UnifiedDateRangeCard
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.viewmodel.MainUiState
 import java.text.SimpleDateFormat
@@ -297,7 +298,7 @@ fun IcsImportExportScreen(
                     onClick = onDismissExportResult,
                     colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
                 ) {
-                    Text("Done", color = Color(0xFF003824), fontWeight = FontWeight.Bold)
+                    Text("Done", color = CalClonerTheme.colors.onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -344,7 +345,7 @@ fun IcsImportExportScreen(
                     onClick = onDismissImportResult,
                     colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
                 ) {
-                    Text("Done", color = Color(0xFF003824), fontWeight = FontWeight.Bold)
+                    Text("Done", color = CalClonerTheme.colors.onAccent, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -527,7 +528,7 @@ private fun ExportTabContent(
                                     onCheckedChange = { onSelectCalendar(cal.id, it) },
                                     colors = CheckboxDefaults.colors(
                                         checkedColor = TitaniumMint.Mint500,
-                                        checkmarkColor = Color(0xFF003824)
+                                        checkmarkColor = CalClonerTheme.colors.onAccent
                                     )
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -609,30 +610,31 @@ private fun ExportTabContent(
                     .fillMaxWidth()
                     .height(54.dp)
             ) {
+                val onAccent = CalClonerTheme.colors.onAccent
                 if (uiState.icsIsOperating) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color(0xFF003824),
+                        color = onAccent,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = uiState.icsProgressText ?: "Exporting...",
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF003824)
+                        color = onAccent
                     )
                 } else {
                     Icon(
                         imageVector = if (uiState.icsExportAsZip) Icons.Default.Archive else Icons.Default.Folder,
                         contentDescription = null,
-                        tint = Color(0xFF003824)
+                        tint = onAccent
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (uiState.icsExportAsZip) "Choose ZIP Save Location" else "Choose Output Folder & Export",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = Color(0xFF003824)
+                        color = onAccent
                     )
                 }
             }
@@ -885,30 +887,31 @@ private fun ImportTabContent(
                     .fillMaxWidth()
                     .height(54.dp)
             ) {
+                val onAccent = CalClonerTheme.colors.onAccent
                 if (uiState.icsIsOperating) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color(0xFF003824),
+                        color = onAccent,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = uiState.icsProgressText ?: "Importing events...",
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF003824)
+                        color = onAccent
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.FileDownload,
                         contentDescription = null,
-                        tint = Color(0xFF003824)
+                        tint = onAccent
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Import Events into Target",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = Color(0xFF003824)
+                        color = onAccent
                     )
                 }
             }

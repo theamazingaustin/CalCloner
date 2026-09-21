@@ -308,7 +308,7 @@ fun CalendarSyncApp(
     // Scaffold UI
     // ─────────────────────────────────────────────────────────────────────────
 
-    BackHandler(enabled = uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY) {
+    BackHandler(enabled = uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY || uiState.selectedTab == AppTab.ONE_TIME_ICS) {
         viewModel.selectTab(AppTab.ONE_TIME)
     }
 
@@ -326,7 +326,7 @@ fun CalendarSyncApp(
                 onExportConfig = { viewModel.exportConfiguration(context) },
                 onImportConfig = { importConfigLauncher.launch("application/json") },
                 onOpenBatterySettings = { openBatterySettings() },
-                onNavigateBack = if (uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY) {
+                onNavigateBack = if (uiState.selectedTab == AppTab.DELETE || uiState.selectedTab == AppTab.ONE_TIME_COPY || uiState.selectedTab == AppTab.ONE_TIME_ICS) {
                     { viewModel.selectTab(AppTab.ONE_TIME) }
                 } else null
             )
@@ -366,7 +366,7 @@ fun CalendarSyncApp(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "New Sync Pair",
+                                text = "New Clone Pair",
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.5.sp,

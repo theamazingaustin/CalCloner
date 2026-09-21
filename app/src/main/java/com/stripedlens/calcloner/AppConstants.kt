@@ -1,4 +1,4 @@
-﻿package com.stripedlens.calcloner
+package com.stripedlens.calcloner
 
 import androidx.compose.ui.unit.dp
 
@@ -52,5 +52,7 @@ object AppConstants {
         val CALCLONER_TAG_REGEX = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
         val CALCLONER_TAG_REPLACE_REGEX = Regex("""\[CalCloner-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
         val LEGACY_CALCLONE_TAG_REPLACE_REGEX = Regex("""\[CalClone-ID:\s*(?:[a-zA-Z0-9_-]+:)?\d+\]""")
+        val CALCLONER_UID_REGEX = Regex("""\[CalCloner-UID:\s*([^\]]+)\]""")
+        val CALCLONER_UID_REPLACE_REGEX = Regex("""\[CalCloner-UID:\s*[^\]]+\]""")
     }
 }

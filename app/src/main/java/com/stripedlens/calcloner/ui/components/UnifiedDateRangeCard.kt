@@ -2,15 +2,8 @@ package com.stripedlens.calcloner.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,6 +35,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import android.text.format.DateUtils
+
+enum class SyncTimeUnit(val label: String, val multiplier: Int) {
+    DAYS("days", 1),
+    WEEKS("weeks", 7),
+    MONTHS("months", 30)
+}
 
 /**
  * Reusable, sleek date range picker featuring quick-select preset chips
@@ -411,6 +415,109 @@ private fun UnifiedBoundaryControl(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CombinedSyncTelemetryCard(
+    lastSyncTime: Long?,
+    syncedEventsCount: Int,
+    modifier: Modifier = Modifier
+) {
+    val formattedTime = remember(lastSyncTime) {
+        if (lastSyncTime == null || lastSyncTime <= 0) {
+            "Ready to sync"
+        } else {
+            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            val timeStr = timeFormat.format(Date(lastSyncTime))
+            val now = Calendar.getInstance()
+            val syncCal = Calendar.getInstance().apply { timeInMillis = lastSyncTime }
+            when {
+                DateUtils.isToday(lastSyncTime) -> "Today at $timeStr"
+                now.get(Calendar.YEAR) == syncCal.get(Calendar.YEAR) &&
+                    now.get(Calendar.DAY_OF_YEAR) - syncCal.get(Calendar.DAY_OF_YEAR) == 1 -> "Yesterday at $timeStr"
+                else -> {
+                    val dateFormat = SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault())
+                    dateFormat.format(Date(lastSyncTime))
+                }
+            }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Side: Last Sync Info (~60% split)
+            Column(
+                modifier = Modifier.weight(0.60f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = TitaniumMint.Mint400,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = "LAST SYNC",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+                Text(
+                    text = formattedTime,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Subtle vertical separator
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(36.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            )
+
+            // Right Side: Synced Events Count (~40% split)
+            Column(
+                modifier = Modifier.weight(0.40f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = syncedEventsCount.toString(),
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = TitaniumMint.Mint400
+                )
+                Text(
+                    text = "Events",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
             }
         }
     }

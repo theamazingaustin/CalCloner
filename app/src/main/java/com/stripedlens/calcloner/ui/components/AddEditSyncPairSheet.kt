@@ -46,6 +46,7 @@ import com.stripedlens.calcloner.ui.dialogs.CalendarRoleInfoDialog
 import com.stripedlens.calcloner.ui.dialogs.DeletePairDialog
 import com.stripedlens.calcloner.ui.dialogs.DiscardChangesDialog
 import com.stripedlens.calcloner.ui.dialogs.ApplyDialogBlurEffect
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.ui.theme.UiDimensions
 import androidx.compose.ui.window.DialogProperties
@@ -310,6 +311,9 @@ fun AddEditSyncPairSheet(
         prevSheetSyncing = isSyncing
     }
 
+    var foreignClonesDetectedCount by remember { mutableStateOf<Int?>(null) }
+    var dismissedForeignWarningForCalId by remember { mutableStateOf<Long?>(null) }
+
     LaunchedEffect(selectedToCal?.id, pairToEdit?.id) {
         val toCalId = selectedToCal?.id
         if (toCalId != null) {
@@ -322,10 +326,15 @@ fun AddEditSyncPairSheet(
                 )
                 withContext(Dispatchers.Main) {
                     syncedEventsCount = count
+                    val isNewTarget = pairToEdit == null || toCalId != pairToEdit.toCalendarId
+                    if (isNewTarget && count > 0 && dismissedForeignWarningForCalId != toCalId) {
+                        foreignClonesDetectedCount = count
+                    }
                 }
             }
         } else {
             syncedEventsCount = 0
+            foreignClonesDetectedCount = null
         }
     }
 
@@ -359,6 +368,62 @@ fun AddEditSyncPairSheet(
         CalendarRoleInfoDialog(
             type = infoModalType!!,
             onDismiss = { infoModalType = null }
+        )
+    }
+
+    // Foreign Clones (Split-Brain) Warning Dialog
+    if (foreignClonesDetectedCount != null && foreignClonesDetectedCount!! > 0) {
+        val count = foreignClonesDetectedCount!!
+        ApplyDialogBlurEffect()
+        AlertDialog(
+            onDismissRequest = {
+                dismissedForeignWarningForCalId = selectedToCal?.id
+                foreignClonesDetectedCount = null
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier.fillMaxWidth(UiDimensions.DialogWidthFraction),
+            shape = RoundedCornerShape(UiDimensions.DialogCornerRadius),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = UiDimensions.DialogGlassAlpha),
+            tonalElevation = 6.dp,
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = TitaniumMint.Amber400
+                )
+            },
+            title = {
+                Text(
+                    text = "Foreign Clones Detected",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "It seems this calendar is already being synchronized on another device or by another sync pair ($count cloned events found).\n\nProceeding may result in conflicting duplicates or split-brain overwrites.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        dismissedForeignWarningForCalId = selectedToCal?.id
+                        foreignClonesDetectedCount = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
+                ) {
+                    Text("Proceed Anyway", color = CalClonerTheme.colors.onAccent, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    foreignClonesDetectedCount = null
+                    selectedToCal = null
+                }) {
+                    Text("Select Different Calendar")
+                }
+            }
         )
     }
 
@@ -405,7 +470,7 @@ fun AddEditSyncPairSheet(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = TitaniumMint.Mint500)
                 ) {
-                    Text("Select Anyway", color = Color(0xFF003824), fontWeight = FontWeight.Bold)
+                    Text("Select Anyway", color = CalClonerTheme.colors.onAccent, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -689,7 +754,7 @@ fun AddEditSyncPairSheet(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         CalendarSelectionCard(
                             title = "Source Calendar",
-                            badgeText = "Read Only",
+                            badgeText = "READ-ONLY",
                             isSource = true,
                             calendars = availableCalendars,
                             selectedCalendar = selectedFromCal,
@@ -719,7 +784,7 @@ fun AddEditSyncPairSheet(
 
                         CalendarSelectionCard(
                             title = "Target Calendar",
-                            badgeText = "Full Access",
+                            badgeText = null,
                             isSource = false,
                             calendars = availableCalendars,
                             selectedCalendar = selectedToCal,
@@ -849,11 +914,15 @@ fun AddEditSyncPairSheet(
                     )
 
                     // Sync Range Component
-                    SyncRangeCard(
+                    UnifiedDateRangeCard(
                         daysPast = daysPast,
                         daysFuture = daysFuture,
-                        onDaysPastChange = { daysPast = it },
-                        onDaysFutureChange = { daysFuture = it }
+                        onRangeChanged = { past, future ->
+                            daysPast = past
+                            daysFuture = future
+                        },
+                        title = "SYNC RANGE",
+                        description = "Define synchronization boundaries. Events outside this rolling window are automatically pruned from the target calendar."
                     )
 
                     // Selective Field Sync Options Card
@@ -982,10 +1051,11 @@ fun AddEditSyncPairSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
+                            val onAccentColor = CalClonerTheme.colors.onAccent
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = if (canSave) Color(0xFF003824) else Color(0xFF003824).copy(alpha = 0.4f),
+                                tint = if (canSave) onAccentColor else onAccentColor.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -994,18 +1064,19 @@ fun AddEditSyncPairSheet(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = if (canSave) Color(0xFF003824) else Color(0xFF003824).copy(alpha = 0.4f)
+                                color = if (canSave) onAccentColor else onAccentColor.copy(alpha = 0.4f)
                             )
                         }
 
                         // Vertical Divider
+                        val onAccentDivider = CalClonerTheme.colors.onAccent
                         Box(
                             modifier = Modifier
                                 .width(1.dp)
                                 .height(26.dp)
                                 .background(
                                     if (canSave) TitaniumMint.Mint400.copy(alpha = 0.45f)
-                                    else Color(0xFF003824).copy(alpha = 0.12f)
+                                    else onAccentDivider.copy(alpha = 0.12f)
                                 )
                         )
 

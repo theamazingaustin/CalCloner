@@ -109,7 +109,7 @@ fun DisclaimerConsentDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Always select a dedicated, blank calendar as your target clone (e.g., 'Work Clone'). The app's delete function wipes ALL events from the target calendar (including any personal events if you select a non-blank calendar). Using a blank calendar ensures complete safety.",
+                            text = "Always select a dedicated calendar as your target clone (e.g., 'Work Clone'). While CalCloner provides safe selective purging for cloned events only, full calendar wipe options also exist. Using a dedicated calendar guarantees complete isolation and peace of mind.",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

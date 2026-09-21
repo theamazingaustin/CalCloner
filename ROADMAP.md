@@ -10,7 +10,7 @@
 
 | Priority | Feature / Improvement | Category | Description | Status |
 |:---:|---|:---:|---|:---:|
-| **1** | **Condition-Based Event Sync (Rule Engine)** | Core Feature | Filter events by Free/Busy status, RSVP response (skip declined meetings), active day/time windows, and keyword inclusion/exclusion patterns. | 🟡 **UI Preview Implemented** (Engine Logic Next) |
+| **1** | **Condition-Based Event Sync (Rule Engine)** | Core Feature | Filter events by Free/Busy status, RSVP response (skip declined meetings), active day/time windows, and keyword inclusion/exclusion patterns. | 🟢 **Completed in v2.3** |
 | **2** | **Rolling Sync History / Diagnostic Log** | Diagnostics & Health | Persistent in-app diagnostic log of the last 10–20 sync runs (+added, ~updated, -removed, duration, error messages) for easy troubleshooting. | 📋 **Planned** |
 | **3** | **Smart Low-Battery Frequency Backoff** | Battery Optimization | Automatically throttles background sync frequency (e.g. 15 min → 1 hr) when battery drops below 15%, rather than completely halting background sync. | 📋 **Planned** |
 
@@ -21,7 +21,7 @@
 
 | Priority | Feature / Improvement | Category | Description | Status |
 |:---:|---|:---:|---|:---:|
-| **4** | **One-Time Operations Engine (Dedicated Tab)** | Navigation & Tools | Full execution engine for the One-Time tab: ad-hoc event copying/moving across calendars, filtered bulk deletion (keyword/date/regex), .ics import/export, deduplication, and calendar migration. | 🟡 **UI Tab & Placeholders Implemented** (Engine Logic Next) |
+| **4** | **One-Time Operations Engine (Dedicated Tab)** | Navigation & Tools | Full execution engine for the One-Time tab: ad-hoc event copying (`copyEventsOneTime`), safe maintenance deletion (`deleteClonedCalendarEvents` / `clearAllCalendarEvents`), and RFC 5545 .ics import/export (`CalendarIcsManager`). | 🟢 **Completed in v2.3** *(Move Staged)* |
 | **5** | **Tasker / MacroDroid / Automation APIs** | Integrations | Broadcast Receiver intents (`ACTION_SYNC_ALL`, `ACTION_SYNC_PAIR`) and native Tasker plugin integration to trigger syncs programmatically. | 📋 **Planned** |
 | **6** | **Staged Event Previews Before Copying** | Verification UX | Interactive checklist of candidate events (+added, ~modified, -removed) with checkboxes and a side-by-side diff inspector prior to write commit. | 📋 **Planned** |
 | **7** | **Event Color Synchronization** | Visual Customization | Replicate individual `EVENT_COLOR` or assign a uniform color tint to all events originating from a specific sync pair. | 📋 **Planned** |

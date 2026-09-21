@@ -22,8 +22,8 @@ android {
         applicationId = "com.stripedlens.calcloner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 23
-        versionName = "2.3"
+        versionCode = 24
+        versionName = "2.4"
         buildConfigField("String", "BUILD_TAG", "\"$gitTag\"")
 
         vectorDrawables {
@@ -76,6 +76,9 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 

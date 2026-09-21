@@ -69,13 +69,13 @@ fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.Sync,
-                    contentDescription = "Sync Pairs",
+                    contentDescription = "Live Clones",
                     modifier = Modifier.rotate(syncSpinAnim.value)
                 )
             },
             label = {
                 Text(
-                    text = "Sync",
+                    text = "Live Clones",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = if (currentTab == AppTab.SYNC) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 12.sp
@@ -109,13 +109,13 @@ fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.FlashOn,
-                    contentDescription = "One-Time Operations",
+                    contentDescription = "1-Time Tools",
                     modifier = Modifier.scale(oneTimeScaleAnim.value)
                 )
             },
             label = {
                 Text(
-                    text = "One-Time",
+                    text = "1-Time Tools",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = if (currentTab == AppTab.ONE_TIME || currentTab == AppTab.DELETE || currentTab == AppTab.ONE_TIME_COPY || currentTab == AppTab.ONE_TIME_ICS) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 12.sp

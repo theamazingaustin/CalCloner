@@ -141,6 +141,38 @@ class SyncPairTest {
     }
 
     @Test
+    fun testMultiHopComplexCycleDetected() {
+        // 5-node chain: 1 -> 2 -> 3 -> 4 -> 5
+        val existing = listOf(
+            SyncPair(id = "p1", fromCalendarId = 1L, fromCalendarName = "C1", toCalendarId = 2L, toCalendarName = "C2"),
+            SyncPair(id = "p2", fromCalendarId = 2L, fromCalendarName = "C2", toCalendarId = 3L, toCalendarName = "C3"),
+            SyncPair(id = "p3", fromCalendarId = 3L, fromCalendarName = "C3", toCalendarId = 4L, toCalendarName = "C4"),
+            SyncPair(id = "p4", fromCalendarId = 4L, fromCalendarName = "C4", toCalendarId = 5L, toCalendarName = "C5"),
+            // Branch from 3 -> 6 -> 7
+            SyncPair(id = "p5", fromCalendarId = 3L, fromCalendarName = "C3", toCalendarId = 6L, toCalendarName = "C6"),
+            SyncPair(id = "p6", fromCalendarId = 6L, fromCalendarName = "C6", toCalendarId = 7L, toCalendarName = "C7")
+        )
+
+        // 5 -> 1 creates 5-hop cycle: 1 -> 2 -> 3 -> 4 -> 5 -> 1
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 5L, proposedToId = 1L))
+
+        // 7 -> 1 creates 5-hop cycle via branch: 1 -> 2 -> 3 -> 6 -> 7 -> 1
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 7L, proposedToId = 1L))
+
+        // 7 -> 3 creates branch cycle: 3 -> 6 -> 7 -> 3
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 7L, proposedToId = 3L))
+
+        // 5 -> 7 is valid (DAG: 1 -> 2 -> 3 -> 4 -> 5 -> 7, no cycle)
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 5L, proposedToId = 7L))
+
+        // Editing p4 (4 -> 5): modifying p4 to (4 -> 1) would create 4-hop cycle 1 -> 2 -> 3 -> 4 -> 1
+        assertTrue(CycleDetector.hasCycle(existing, proposedFromId = 4L, proposedToId = 1L, currentPairId = "p4"))
+
+        // Modifying p4 to (4 -> 8) does not create cycle
+        assertFalse(CycleDetector.hasCycle(existing, proposedFromId = 4L, proposedToId = 8L, currentPairId = "p4"))
+    }
+
+    @Test
     fun testTrackingTagRegexCompatibility() {
         val tagRegex = Regex("""\[CalClone(?:r)?-ID:\s*(?:([a-zA-Z0-9_-]+):)?(\d+)\]""")
 

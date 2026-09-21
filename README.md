@@ -3,7 +3,7 @@
   <p><strong>One-way Android calendar sync — reliable, private, battery-friendly.</strong></p>
 
   <p>
-    <img alt="Version" src="https://img.shields.io/badge/version-2.1-10B981?style=flat-square" />
+    <img alt="Version" src="https://img.shields.io/badge/version-2.4-10B981?style=flat-square" />
     <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white" />
     <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-1.9-7F52FF?style=flat-square&logo=kotlin&logoColor=white" />
     <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white" />
@@ -15,27 +15,38 @@
 
 ## What is CalCloner?
 
-CalCloner clones calendar events **one-way** between any two local Android calendars. It is designed for people who need to share or mirror a calendar (e.g., a work calendar into a shared family calendar, or a personal calendar into a secondary account) without giving any third-party service access to their data.
+CalCloner replicates calendar events **one-way** between any two local Android calendars. It is designed for people who need to mirror a calendar (e.g., a work calendar into a shared family calendar, or a personal calendar into a secondary account) without giving any third-party service access to their data.
 
-Everything runs **on-device**. No cloud sync. No accounts. No privacy trade-offs.
+Everything runs **on-device**. No cloud servers. No accounts. No privacy trade-offs.
 
 ---
 
 ## Features
 
-### 🔁 Sync Engine
-- **One-way sync** between any two calendars on the device
-- Configurable **sync window** — choose how many days past and future to sync
-- Supports **recurring events** (RRULE), all-day events, exceptions, and reminders
-- Events are **tagged** with a unique CalCloner ID so they can be tracked, updated, or removed without touching original events
+### 🔁 Live Clone Engine (Continuous 1-Way Sync)
+- **Continuous 1-way replication** between any two calendars on the device
+- Reassuring security: Source calendar is strictly read-only and never modified
+- Configurable **sync window** — custom past and future day ranges
+- Full support for **recurring events** (RRULE), all-day events, exceptions, and reminders
+- Replica events are stamped as **Cloned Events** with a unique tracking ID so they can be tracked, updated, or purged without touching original events
 - **Self-write detection** prevents infinite sync loops when a content observer fires on a write CalCloner itself made
 
-### 📋 Sync Pairs
-- Create multiple **sync pair configurations**, each mapping one source calendar to one destination
-- Per-pair controls: **enable/disable**, sync now, edit, delete
+### 📋 Clone Pairs
+- Create multiple **clone pair configurations**, each mapping one source calendar to one target
+- Per-pair controls: **enable/disable**, clone now, edit, delete
 - Configure what fields to carry across: title, description, location, reminders, availability, status
-- Optional **custom title override** per pair
-- Sync history displayed per pair: last sync time, events inserted/updated/deleted, duration
+- Prefix/suffix customization (e.g. `[Work] `) to distinguish cloned events in external calendar apps
+- Optional **custom title override** per pair (e.g. "Busy") for private calendar sharing
+- Status history per pair: last clone timestamp, events inserted/updated/deleted, duration
+
+### ⚡ 1-Time Tools & Ad-Hoc Operations
+- **1-Time Event Clone**: On-demand 1-way event replication between any two calendars without setting up recurring workers
+- **ICS & CSV Export/Import**: Export full calendars to standard `.ics` or `.csv` files or ZIP archives down to the second, and safely import external `.ics` files
+- **Delete Calendar Events**: Dedicated maintenance tool with dual-tier wipes:
+  - *Purge Cloned Events Only* — removes only CalCloner-tagged events, leaves originals untouched
+  - *Standard Clear* — removes all events via batch operations
+  - *Deep Clean & Cloud Wipe* — eliminates stubborn cloud-synced events and purges orphaned tombstones
+  - *Safety Lock* — dangerous wipes require typing the exact confirmation phrase `full wipe <calendar name>`
 
 ### ⚙️ Background Sync
 - **WorkManager** periodic background sync (15 min to 24 hr intervals, or manual-only)
@@ -43,19 +54,12 @@ Everything runs **on-device**. No cloud sync. No accounts. No privacy trade-offs
 - **Boot receiver** re-schedules sync after device restart
 - Respects **battery saver / low battery** mode — configurable
 
-### 🗑️ Delete Screen (Calendar Maintenance)
-- Dedicated screen for safe calendar event deletion
-- **Two modes:**
-  - *Purge Cloned Events Only* — removes only CalCloner-tagged events, leaves originals untouched
-  - *Wipe All Events* — removes every event from a selected calendar (with explicit warning)
-- **Safety confirmation lock**: the action button is disabled until the user types the exact phrase `delete <calendar name>`, preventing any accidental deletion
-
 ### 🎨 UI & UX
 - Material 3 design system with full **dark / light / auto theme** support
-- Custom **TitaniumMint** color palette (mint greens + rose reds for danger zones)
-- Bottom navigation bar switching between **Sync** and **Delete** tabs
-- Smooth animations, progress indicators, and per-operation status messages
-- Export and import sync pair configurations as **JSON** for backup and transfer
+- Custom **TitaniumMint** color palette (mint greens + amber/rose accents)
+- Bottom navigation bar switching between **Live Clones** and **1-Time Tools**
+- Smooth animations, light-pulse conduit flow, progress indicators, and per-operation status messages
+- Export and import configuration profiles as **JSON** for backup and transfer
 
 ---
 

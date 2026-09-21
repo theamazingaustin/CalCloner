@@ -399,8 +399,15 @@ object IcsEngine {
     }
 
     private fun escapeCsv(text: String): String {
-        val needsQuotes = text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")
-        val escaped = text.replace("\"", "\"\"")
+        // OWASP CSV Injection Defense: Neutralize formula execution triggers (=, +, -, @, \t, \r)
+        val formulaTriggers = charArrayOf('=', '+', '-', '@', '\t', '\r')
+        val safeText = if (text.isNotEmpty() && formulaTriggers.contains(text[0])) {
+            "'$text"
+        } else {
+            text
+        }
+        val needsQuotes = safeText.contains(",") || safeText.contains("\"") || safeText.contains("\n") || safeText.contains("\r")
+        val escaped = safeText.replace("\"", "\"\"")
         return if (needsQuotes) "\"$escaped\"" else escaped
     }
 }

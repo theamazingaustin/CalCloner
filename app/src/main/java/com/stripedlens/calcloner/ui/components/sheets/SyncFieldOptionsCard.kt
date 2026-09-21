@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.ExpandLess
+import com.stripedlens.calcloner.ui.components.CalClonerSwitch
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Title
@@ -151,12 +152,9 @@ private fun FieldAccordionRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Switch(
+                CalClonerSwitch(
                     checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    modifier = Modifier
-                        .scale(0.85f)
-                        .height(24.dp)
+                    onCheckedChange = onCheckedChange
                 )
                 if (hasSubOptions) {
                     IconButton(
@@ -446,6 +444,13 @@ fun SyncFieldOptionsCard(
                                     fontSize = 11.sp
                                 )
                             }
+                            Text(
+                                text = "Tip: Add a prefix like [Work] or • so cloned events are easily distinguished in external calendar apps.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp
+                            )
                         } else {
                             OutlinedTextField(
                                 value = customTitle,

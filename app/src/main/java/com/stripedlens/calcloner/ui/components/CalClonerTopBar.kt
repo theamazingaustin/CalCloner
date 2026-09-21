@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.stripedlens.calcloner.BuildConfig
 import com.stripedlens.calcloner.R
 import com.stripedlens.calcloner.ThemeMode
+import com.stripedlens.calcloner.ui.theme.CalClonerTheme
 import com.stripedlens.calcloner.ui.theme.TitaniumMint
 import com.stripedlens.calcloner.util.AppUpdateInfo
 
@@ -92,7 +93,7 @@ fun CalClonerTopBar(
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_calcloner),
                                     contentDescription = "CalCloner Logo",
-                                    tint = Color(0xFF003824),
+                                    tint = CalClonerTheme.colors.onAccent,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

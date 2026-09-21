@@ -87,7 +87,7 @@ fun OneTimeOperationsScreen(
             )
 
             OneTimeFeatureCard(
-                title = "One-Time Event Copy & Move",
+                title = "1-Time Event Clone",
                 badge = "AVAILABLE",
                 badgeColor = TitaniumMint.Mint400,
                 badgeBg = TitaniumMint.Mint500.copy(alpha = 0.15f),
@@ -96,11 +96,11 @@ fun OneTimeOperationsScreen(
                 icon = Icons.Default.ContentCopy,
                 iconColor = TitaniumMint.Mint400,
                 features = listOf(
-                    "Safe additive copy: source calendar is strictly read-only and never modified",
+                    "Safe additive clone: source calendar is strictly read-only and never modified",
                     "Cloned events are stamped with CalCloner tags for easy identification and deletion",
-                    "Move (cut & paste) is staged in the UI and will unlock once backups are available"
+                    "Custom past and future day windows with duplicate prevention"
                 ),
-                actionButtonText = "Open Copy & Move Tool",
+                actionButtonText = "Open 1-Time Clone Tool",
                 onActionClick = onOpenCopyScreen
             )
 
@@ -153,22 +153,6 @@ fun OneTimeOperationsScreen(
                     "Identifies identical title, start/end time, and recurrence clones",
                     "Interactive review before pruning redundant copies",
                     "Preserves primary event and original provider IDs"
-                )
-            )
-
-            OneTimeFeatureCard(
-                title = "Calendar Migration Wizard",
-                badge = "COMING SOON",
-                badgeColor = TitaniumMint.Amber400,
-                badgeBg = TitaniumMint.Amber500.copy(alpha = 0.15f),
-                badgeBorder = TitaniumMint.Amber500.copy(alpha = 0.35f),
-                description = "Full calendar transfer wizard to migrate all past and future events when switching to a new Google, Outlook, or CalDAV account.",
-                icon = Icons.Default.MoveDown,
-                iconColor = TitaniumMint.Mint400,
-                features = listOf(
-                    "Batch event transfer with progress bar and cancel safeguard",
-                    "Remaps reminders, recurrences, and exceptions automatically",
-                    "Verification report comparing source vs destination counts"
                 )
             )
 
